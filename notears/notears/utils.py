@@ -6,7 +6,8 @@ import random
 import networkx as nx 
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os 
+import os
+from tqdm import tqdm 
 
 def set_random_seed(seed):
     random.seed(seed)
@@ -339,6 +340,14 @@ def get_labels(name):
     elif name == "breast_cancer":
         labels = {0:'0:age', 1:'1:menopause', 2:'2:tumor-size', 3:'3:inv-nodes', 4:'4:node-caps',
                   5:'5:deg-malig', 6:'6:breast', 7:'7:breast-quad', 8:'8:irradiat', 9:'9:Cancer'}
+        
+    elif name == 'diabetes':
+        labels= {0:'0:age', 1:'1:sex', 2:'2:bmi', 3:'3:bp', 4:'4:s1',
+                 5:'5:s2', 6:'6:s3', 7:'7:s4', 8:'8:s5', 9:'9:s6', 10:'10:target'}
+        
+    elif name == 'friedman1':
+        labels = {0:'0:ft_0', 1:'1:ft_1', 2:'2:ft_2', 3:'3:ft_3',
+                 4:'4:ft_4', 5:'5:ft_5', 6:'6:ft_6', 7:'7:ft_7', 8:'8:ft_8', 9:'ft_9', 10:'10:target'}
     else: 
         raise  Exception("Dataset name is not defined labels")
         
@@ -351,7 +360,7 @@ def draw_head_map(array, save_path):
     
 def draw_seed_graphs(root_path, w_threshold, no_seeds, labels):    
     # Get avarage W_est from random seeds 
-    for seed in range(no_seeds):
+    for seed in tqdm(range(no_seeds)):
         seed_name = 'seed_'+str(seed)
         out_folder = root_path + f"{seed_name}"
         if not os.path.isdir(out_folder):
@@ -360,8 +369,10 @@ def draw_seed_graphs(root_path, w_threshold, no_seeds, labels):
         
         # Load seed data 
         seed_result_path = out_folder + 'W_est.csv'
+        print(seed_result_path)
         seed_W_est = np.loadtxt(seed_result_path, delimiter=",", dtype=float)
         seed_W_est[np.abs(seed_W_est) < w_threshold] = 0
+        assert is_dag(seed_W_est)
         
         ## Visualize graph 
         vis_path = out_folder + f"vis_avg_graph_{str(w_threshold)}.png"

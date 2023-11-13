@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 def main(args):
     np.set_printoptions(precision=3)
     
-    thresholds_lst = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35]
+    # thresholds_lst = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45]
     # Read labels 
     labels = ut.get_labels(args.data_name)
     # Get avarage W_est from random seeds 
@@ -32,8 +32,6 @@ def main(args):
     mean_W_est =  W_est_list.mean(axis=0)
     std_W_est = W_est_list.std(axis=0)
     
-    print('np_mean_W_est: ', mean_W_est)
-    print('std_W_est: ', std_W_est)
     # Calculate avg DAG with thresholds
     avg_seed_path =  args.root_path + f"avg_seed"
     if not os.path.isdir(avg_seed_path):
@@ -41,22 +39,36 @@ def main(args):
     avg_seed_path += '/'
     ut.draw_head_map(std_W_est, avg_seed_path + f'std_array.png')
     ut.draw_head_map(mean_W_est, avg_seed_path + f'mean_array.png')
+    
+    
+    while(not ut.is_dag(mean_W_est)):
+        min_val = np.unique(mean_W_est)[1]
+        mean_W_est[mean_W_est == min_val] = 0
+        print(f'min_val: {min_val}')
+        
+    ## Save results with threshold 
+    np.savetxt(avg_seed_path + f'avg_dag_W_est.csv', mean_W_est, delimiter=',')
 
-    for w_threshold in thresholds_lst:
-        tmp_W_est = mean_W_est.copy()
-        tmp_W_est[np.abs(tmp_W_est) < w_threshold] = 0
-        try: 
-            assert ut.is_dag(tmp_W_est)
-        except:
-            print(f"Skip threshold {w_threshold}")
-            continue
+    ## Visualize graph 
+    vis_path = avg_seed_path + f"vis_avg_dag_graph.png"
+    ut.draw_directed_graph(mean_W_est, vis_path, labels) 
+    ut.draw_head_map(mean_W_est, avg_seed_path + f'mean_dag_array.png')
 
-        ## Save results with threshold 
-        np.savetxt(avg_seed_path + f'avg_W_est_{str(w_threshold)}.csv', tmp_W_est, delimiter=',')
+    # for w_threshold in thresholds_lst:
+    #     tmp_W_est = mean_W_est.copy()
+    #     tmp_W_est[np.abs(tmp_W_est) < w_threshold] = 0
+    #     try: 
+    #         assert ut.is_dag(tmp_W_est)
+    #     except:
+    #         print(f"Skip threshold {w_threshold}")
+    #         continue
 
-        ## Visualize graph 
-        vis_path = avg_seed_path + f"vis_avg_graph_{str(w_threshold)}.png"
-        ut.draw_directed_graph(tmp_W_est, vis_path, labels) 
+    #     ## Save results with threshold 
+    #     np.savetxt(avg_seed_path + f'avg_W_est_{str(w_threshold)}.csv', tmp_W_est, delimiter=',')
+
+    #     ## Visualize graph 
+    #     vis_path = avg_seed_path + f"vis_avg_graph_{str(w_threshold)}.png"
+    #     ut.draw_directed_graph(tmp_W_est, vis_path, labels) 
         
         
  
