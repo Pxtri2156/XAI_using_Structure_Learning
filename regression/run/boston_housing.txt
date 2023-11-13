@@ -1,0 +1,26 @@
+-----------Linear regression------------
+Best Hyperparameters: {'copy_X': True, 'fit_intercept': False, 'n_jobs': None, 'positive': False}
+Best Model: LinearRegression(fit_intercept=False)
+Average: 0.02+-0.0
+-----------Ridge regression------------
+Best Hyperparameters: {'alpha': 1, 'copy_X': True, 'fit_intercept': True, 'positive': True}
+Best Model: Ridge(alpha=1, positive=True)
+Average: 0.02+-0.0
+-----------Lasso regression------------
+Best Hyperparameters: {'alpha': 1, 'copy_X': True, 'fit_intercept': True, 'positive': True}
+Best Model: Lasso(alpha=1, positive=True)
+Average: 0.04+-0.0
+-----------ElasticNet regression------------
+Best Hyperparameters: {'alpha': 1, 'copy_X': True, 'fit_intercept': True, 'l1_ratio': 0.0, 'positive': False}
+Best Model: ElasticNet(alpha=1, l1_ratio=0.0)
+Average: 0.03+-0.0
+-----------SVM regression------------
+Best Hyperparameters: {'C': 3, 'epsilon': 0.0, 'gamma': 'auto', 'kernel': 'rbf'}
+Best Model: SVR(C=3, epsilon=0.0, gamma='auto')
+Average: 0.01+-0.0
+-----------Decision Tree Regression------------
+Best Hyperparameters: {'ccp_alpha': 0.0, 'max_depth': None, 'max_features': None, 'max_leaf_nodes': 50, 'min_impurity_decrease': 0.0, 'min_samples_leaf': 2, 'min_samples_split': 5, 'min_weight_fraction_leaf': 0.0, 'random_state': 42, 'splitter': 'random'}
+Best Model: DecisionTreeRegressor(max_leaf_nodes=50, min_samples_leaf=2,
+                      min_samples_split=5, random_state=42, splitter='random')
+Average: 0.01+-0.0
+-----------Random Forest Regression------------

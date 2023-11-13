@@ -1,0 +1,13 @@
+-----------Linear regression------------
+Best Hyperparameters: {'copy_X': True, 'fit_intercept': False, 'n_jobs': None, 'positive': False}
+Best Model: LinearRegression(fit_intercept=False)
+Average: 0.03+-0.0
+-----------Ridge regression------------
+Best Hyperparameters: {'alpha': 1, 'copy_X': True, 'fit_intercept': False, 'positive': True}
+Best Model: Ridge(alpha=1, fit_intercept=False, positive=True)
+Average: 0.03+-0.0
+-----------Lasso regression------------
+Best Hyperparameters: {'alpha': 1, 'copy_X': True, 'fit_intercept': True, 'positive': True}
+Best Model: Lasso(alpha=1, positive=True)
+Average: 0.06+-0.0
+-----------ElasticNet regression------------
