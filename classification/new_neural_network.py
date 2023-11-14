@@ -32,10 +32,10 @@ class SimpleNN(nn.Module):
 # Check for GPU availability
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device: ", device)
-result_path = '/workspace/tripx/MCS/xai_causality/classification/run/neural_network/uci_adult_income_cls.json'
+result_path = '/workspace/tripx/MCS/xai_causality/classification/run/neural_network/diabetes.json'
 # data_path = '/dataset/PANCAN/STAD_gene_filter.csv'
 
-data_path = '/workspace/tripx/MCS/xai_causality/dataset/adult_income/norm_adult_income.csv'
+data_path = '/workspace/tripx/MCS/xai_causality/dataset/scaled_diabetes.csv'
 data = pd.read_csv(data_path)
 data = data.to_numpy()
 
