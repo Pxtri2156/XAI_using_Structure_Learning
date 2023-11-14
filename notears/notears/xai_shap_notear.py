@@ -3,20 +3,29 @@ sys.path.append("./")
 import os
 import argparse
 import json
-import seaborn as sns
+import math
+import wandb
+import torch
+import numpy as np
+import pandas as pd
+import argparse
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, f1_score, accuracy_score
+import shap
+import matplotlib.pyplot as plt
+
 from notears.locally_connected import LocallyConnected
 from notears.lbfgsb_scipy import LBFGSBScipy
 from notears.trace_expm import trace_expm
-import torch
-import torch.nn as nn
-import numpy as np
-import math
-import pandas as pd
-import wandb
+
 import notears.utils as ut
-from sklearn.metrics import classification_report, f1_score, accuracy_score
 import networkx as nx 
 import matplotlib.pyplot as plt
+
+model = None
 
 class NotearsMLP(nn.Module):
     def __init__(self, dims, bias=True):
@@ -61,9 +70,6 @@ class NotearsMLP(nn.Module):
             x = torch.sigmoid(x)  # [n, d, m1]
             x = fc(x)  # [n, d, m2]
         x = x.squeeze(dim=2)  # [n, d]
-        
-        # sigmoid for classification
-        x[:,-1] = torch.sigmoid(x[:,-1])
         return x
 
     def h_func(self):
@@ -108,21 +114,26 @@ class NotearsMLP(nn.Module):
 
 def squared_loss(output, target):
     # Use weight
-    # Loss = causal(X:1->d) + Lambda*classification (y = f_c(X))
-    # Lambda > 1: focus classification
     n = target.shape[0]
     loss = 0.5 / n * torch.sum((output[:,:-1] - target[:,:-1]) ** 2)
     return loss
 
-def cal_cls_loss(output, target, cross_entropy_loss):
+def cal_reg_loss(output, target):
     n = target.shape[0]
-    loss = cross_entropy_loss(output[:,-1], target[:,-1])/n
+    # Mean Squared Error 
+    loss = 0.5 / n * torch.sum((output[:,-1] - target[:,-1]) ** 2)
     return loss
 
-def dual_ascent_step(model, X, wandb, lambda_cls, lambda1, lambda2, rho, alpha, h, rho_max):
+def pred_reg(X_test, model):
+    X_torch = torch.from_numpy(X_test)
+    X_hat = model(X_torch)
+    cls_predict = X_hat[:,-1]
+    target = X_test[:,-1]
+    return cls_predict.detach().numpy(), target
+
+def dual_ascent_step(model, X, wandb, lambda_reg, lambda1, lambda2, rho, alpha, h, rho_max):
     """Perform one step of dual ascent in augmented Lagrangian."""
     h_new = None
-    cross_entropy_loss = nn.CrossEntropyLoss()
     optimizer = LBFGSBScipy(model.parameters())
     X_torch = torch.from_numpy(X)
     while rho < rho_max:
@@ -130,13 +141,11 @@ def dual_ascent_step(model, X, wandb, lambda_cls, lambda1, lambda2, rho, alpha, 
             optimizer.zero_grad()
             X_hat = model(X_torch)
             causal_loss = squared_loss(X_hat, X_torch)
-            # print("X_hat: ", X_hat)
-            # print('cls output: ', X_hat[:,-1])
-            # print('cls target: ',  X_torch[:,-1])
-            cls_loss = cal_cls_loss(X_hat, X_torch, cross_entropy_loss)
-            cls_loss = lambda_cls*cls_loss
+            reg_loss = cal_reg_loss(X_hat, X_torch)
+            reg_loss = lambda_reg*reg_loss
+            
             # print('cls_loss: ', cls_loss)
-            loss = causal_loss + cls_loss
+            loss = causal_loss + reg_loss
             h_val = model.h_func()
             penalty = 0.5 * rho * h_val * h_val + alpha * h_val
             l2_reg = 0.5 * lambda2 * model.l2_reg()
@@ -145,7 +154,7 @@ def dual_ascent_step(model, X, wandb, lambda_cls, lambda1, lambda2, rho, alpha, 
             result_dict = {'obj_func': primal_obj, 
                             'sq_loss': loss, 
                             'causal_loss': causal_loss,
-                            'cls_loss': cls_loss,
+                            'reg_loss': reg_loss,
                             'penalty': penalty,
                             'h_func': h_val.item(), 
                             'l2_reg': l2_reg,
@@ -166,7 +175,7 @@ def dual_ascent_step(model, X, wandb, lambda_cls, lambda1, lambda2, rho, alpha, 
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
                       wandb, 
-                      lambda_cls: float = 1.2,
+                      lambda_reg: float = 1.2,
                       lambda1: float = 0.,
                       lambda2: float = 0.,
                       max_iter: int = 100,
@@ -175,139 +184,96 @@ def notears_nonlinear(model: nn.Module,
                       w_threshold: float = 0.3):
     rho, alpha, h = 1.0, 0.0, np.inf
     for _ in range(max_iter):
-        rho, alpha, h = dual_ascent_step(model, X, wandb, lambda_cls, lambda1, lambda2,
+        rho, alpha, h = dual_ascent_step(model, X, wandb, lambda_reg, lambda1, lambda2,
                                          rho, alpha, h, rho_max)
         if h <= h_tol or rho >= rho_max:
             break
     W_est = model.fc1_to_adj()
     # W_est[np.abs(W_est) < w_threshold] = 0
-    return W_est
+    return W_est, model
 
-def pred_cls(X_test, model):
-    X_torch = torch.from_numpy(X_test)
+def notear_predict(X_train):
+    global model
+    X_torch = torch.from_numpy(X_train)
     X_hat = model(X_torch)
     cls_predict = X_hat[:,-1]
-    cls_predict = cls_predict.cpu().detach().numpy() > 0.5 
-    cls_predict = cls_predict.astype(int)
-    target = X_test[:,-1]
-    return cls_predict, target
-
-def evaluation_cls(model, X_test, out_folder):
-    target_names = ["No", "Yes"]
-    predict, target = pred_cls(X_test, model)
-    f1 = f1_score(target, predict, average='macro') 
-    acc = accuracy_score(target, predict)
-    cls_results = classification_report(target, predict, target_names=target_names)
-    cls_result_path = out_folder + 'cls_results.txt' 
-    with open(cls_result_path, "w") as f:
-        f.write(cls_results)
-    
-    return acc, f1, cls_results
+    return cls_predict
 
 def main(args):
-    torch.set_default_dtype(torch.double)
-    np.set_printoptions(precision=3)
-    # Read labels 
-    project_name = f'XAI_Classification_{args.data_name}'
-    f1_list = []
-    acc_list = []
-    for seed in range(args.no_seeds):
-        ut.set_random_seed(seed)
-        seed_name = 'seed_'+str(seed)
-        out_folder = args.root_path + f"{seed_name}"
-        if not os.path.isdir(out_folder):
-            os.mkdir(out_folder)
-        out_folder += "/"
-        wandb.init(
-            project=project_name,
-            name=seed_name,
-            config={
-            "name": seed_name,
-            "dataset": args.data_name,
-            "lambda1": args.lambda1,
-            "lambda2": args.lambda2,
-            'lambda_cls': args.lambda_cls,
-            'ratio_test': args.ratio_test},
-            dir=out_folder,
-            mode=args.wandb_mode)
-
-        # Read and process data
-        X, X_train, X_test = ut.read_data(args.data_path, out_folder, args.ratio_test)
-        d = X.shape[1]
-        
-        # Modeling
-        model = NotearsMLP(dims=[d, 10, 1], bias=True)
-        W_est = notears_nonlinear(model, X_train, wandb, args.lambda_cls, args.lambda1, args.lambda2)
-        # assert ut.is_dag(W_est)
-        print('Estimated: \n', W_est, W_est.shape)
-        np.savetxt(out_folder + 'W_est.csv', W_est, delimiter=',')
-        
-        # Evaluation classification on test set
-        acc, f1, cls_results = evaluation_cls(model, X_test, out_folder)
-        print( cls_results)
-        f1_list.append(f1)
-        acc_list.append(acc)
-        
-        # ## Visualize graph 
-        # vis_path = out_folder + "vis_graph.png"
-        # labels = ut.get_labels(args.data_name)
-        # ut.draw_directed_graph(W_est, vis_path, labels) 
-        # draw_directed_graph(W_est, vis_path)
-        
-        wandb.log({'accuracy': acc,
-                   'f1_score': f1})
-        wandb.finish()
+    global model
+    # Read and process data
+    X = pd.read_csv(args.data_path)
+    copy_X = X
+    explained_data = copy_X.drop(['Unnamed: 0'], axis=1)
     
-    if len(acc_list) > 5:
-        acc_list = np.array(acc_list)
-        f1_list =  np.array(f1_list) 
-        final_cls_results = { 'accuracy': {'mean': np.mean(acc_list), 
-                                            'std': np.std(acc_list)},
-                            'f1_score': {'mean': np.mean(f1_list),
-                                        'std': np.std(f1_list)}
-        }  
-        json_object = json.dumps(final_cls_results, indent=4)
-        # Writing to sample.json
-        with open(args.root_path + "final_cls.json", "w") as outfile:
-            outfile.write(json_object)
-
-
+    X = X.to_numpy()[:,1:].astype(float)
+    np.random.shuffle(X)
+    split_n = int((1-args.ratio_test)*X.shape[0])
+    X_train = X[:split_n,:]
+    X_test = X[split_n:, :]
+    d = X.shape[1]
+    
+    print("X_train: ", X_train.shape)
+    # Modeling
+    model = NotearsMLP(dims=[d, 10, 1], bias=True)
+    W_est, model = notears_nonlinear(model, X_train, wandb, args.lambda_reg, args.lambda1, args.lambda2)
+    
+    ## to be DAG 
+    while(not ut.is_dag(W_est)):
+        min_val = np.unique(W_est)[1]
+        W_est[W_est == min_val] = 0
+        # print(f'min_val: {min_val}')
+        
+    ## Visualize graph 
+    vis_path = args.save_folder + "vis_dag_graph.png"
+    labels = ut.get_labels(args.data_name)
+    ut.draw_directed_graph(W_est, vis_path, labels) 
+    
+    # Shape 
+    data_train = None
+    X100 = shap.utils.sample(X_train, 100)
+    explainer = shap.Explainer(notear_predict, X100)
+    shap_values = explainer(explained_data)
+    shap.plots.bar(shap_values, show=False)
+    plt.savefig('shap_on_notear.png')
+    
 def arg_parser():
     parser = argparse.ArgumentParser()
     # path
     parser.add_argument("--root_path", 
-                        default="/workspace/tripx/MCS/xai_causality/run/ov_cancer/", 
+                        default="/workspace/tripx/MCS/xai_causality/run_v2/boston_housing", 
                         type=str)
     parser.add_argument("--data_path", 
-                        default="/dataset/PANCAN/OV_gene_filter.csv", 
+                        default="/workspace/tripx/MCS/xai_causality/dataset/scaled_boston_housing.csv", 
                         type=str)
     parser.add_argument("--data_name", 
-                        default="ov_cancer", 
+                        default="boston_housing", 
+                        type=str)
+    parser.add_argument("--save_folder", 
+                        default="/workspace/tripx/MCS/xai_causality/baseline_xai/shap", 
                         type=str)
     # training
-    parser.add_argument("--lambda_cls", 
+    parser.add_argument("--lambda_reg", 
                         default=5, 
                         type=float)
     parser.add_argument("--lambda1", 
-                        default=0.01, 
+                        default=0.005, 
                         type=float)
     parser.add_argument("--lambda2", 
-                        default=0.005, 
+                        default=0.0025, 
                         type=float)
     parser.add_argument("--ratio_test", 
                         default=0.2, 
                         type=float)
     parser.add_argument("--no_seeds", 
-                        default=15, 
+                        default=20, 
                         type=int,
                         help='Number of random seed')
-    # log
-    parser.add_argument("--wandb_mode", 
-                        default="online", 
-                        type=str)
     
     return parser.parse_args()
-   
+
+
+
 if __name__ == '__main__':
     args = arg_parser()
     main(args)
