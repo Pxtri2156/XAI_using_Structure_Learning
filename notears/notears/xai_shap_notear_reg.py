@@ -3,27 +3,20 @@ sys.path.append("./")
 import os
 import argparse
 import json
-import math
-import wandb
-import torch
-import numpy as np
-import pandas as pd
-import argparse
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, f1_score, accuracy_score
-import shap
-import matplotlib.pyplot as plt
-
 from notears.locally_connected import LocallyConnected
 from notears.lbfgsb_scipy import LBFGSBScipy
 from notears.trace_expm import trace_expm
-
+import torch
+import torch.nn as nn
+import numpy as np
+import math
+import pandas as pd
+import wandb
 import notears.utils as ut
+from sklearn.metrics import classification_report, f1_score, accuracy_score
 import networkx as nx 
 import matplotlib.pyplot as plt
+import shap 
 
 model = None
 
@@ -114,6 +107,8 @@ class NotearsMLP(nn.Module):
 
 def squared_loss(output, target):
     # Use weight
+    # Loss = causal(X:1->d) + Lambda*classification (y = f_c(X))
+    # Lambda > 1: focus classification
     n = target.shape[0]
     loss = 0.5 / n * torch.sum((output[:,:-1] - target[:,:-1]) ** 2)
     return loss
@@ -124,12 +119,21 @@ def cal_reg_loss(output, target):
     loss = 0.5 / n * torch.sum((output[:,-1] - target[:,-1]) ** 2)
     return loss
 
-def pred_reg(X_test, model):
+def pred_reg(X_test):
+    global model
     X_torch = torch.from_numpy(X_test)
     X_hat = model(X_torch)
     cls_predict = X_hat[:,-1]
     target = X_test[:,-1]
     return cls_predict.detach().numpy(), target
+
+def pred_reg_only(X_test):
+    global model
+    X_torch = torch.from_numpy(X_test)
+    X_hat = model(X_torch)
+    cls_predict = X_hat[:,-1]
+    return cls_predict.detach().numpy()
+
 
 def dual_ascent_step(model, X, wandb, lambda_reg, lambda1, lambda2, rho, alpha, h, rho_max):
     """Perform one step of dual ascent in augmented Lagrangian."""
@@ -172,6 +176,7 @@ def dual_ascent_step(model, X, wandb, lambda_reg, lambda1, lambda2, rho, alpha, 
     alpha += rho * h_new
     return rho, alpha, h_new
 
+
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
                       wandb, 
@@ -190,58 +195,89 @@ def notears_nonlinear(model: nn.Module,
             break
     W_est = model.fc1_to_adj()
     # W_est[np.abs(W_est) < w_threshold] = 0
-    return W_est, model
-
-def notear_predict(X_train):
-    global model
-    X_torch = torch.from_numpy(X_train)
-    X_hat = model(X_torch)
-    cls_predict = X_hat[:,-1]
-    return cls_predict
+    return W_est
 
 def main(args):
     global model
-    # Read and process data
-    X = pd.read_csv(args.data_path)
-    copy_X = X
-    explained_data = copy_X.drop(['Unnamed: 0'], axis=1)
-    
-    X = X.to_numpy()[:,1:].astype(float)
-    np.random.shuffle(X)
-    split_n = int((1-args.ratio_test)*X.shape[0])
-    X_train = X[:split_n,:]
-    X_test = X[split_n:, :]
-    d = X.shape[1]
-    
-    print("X_train: ", X_train.shape)
-    # Modeling
-    model = NotearsMLP(dims=[d, 10, 1], bias=True)
-    W_est, model = notears_nonlinear(model, X_train, wandb, args.lambda_reg, args.lambda1, args.lambda2)
-    
-    ## to be DAG 
-    while(not ut.is_dag(W_est)):
-        min_val = np.unique(W_est)[1]
-        W_est[W_est == min_val] = 0
-        # print(f'min_val: {min_val}')
+    torch.set_default_dtype(torch.double)
+    np.set_printoptions(precision=3)
+    # Read labels 
+    # project_name = f'XAI_Regression_{args.data_name}'
+    project_name = f'XAI_Regression_tuning_{args.data_name}'
+
+    test_loss_lst = []
+    for seed in range(args.no_seeds):
+        ut.set_random_seed(seed)
+        seed_name = 'seed_'+str(seed)
+        out_folder = args.root_path + f"{seed_name}"
+        if not os.path.isdir(out_folder):
+            os.mkdir(out_folder)
+        out_folder += "/"
+        wandb.init(
+            project=project_name,
+            name=seed_name,
+            config={
+            "name": seed_name,
+            "dataset": args.data_name,
+            "lambda1": args.lambda1,
+            "lambda2": args.lambda2,
+            'lambda_reg': args.lambda_reg,
+            'ratio_test': args.ratio_test},
+            dir=out_folder,
+            mode=args.wandb_mode)
+
+        # Read and process data
+        # X, X_train, X_test = ut.read_data(args.data_path, out_folder, args.ratio_test)
+        X = pd.read_csv(args.data_path)
+        copy_X = X
+        explained_data = copy_X.drop(['Unnamed: 0'], axis=1)
         
-    ## Visualize graph 
-    vis_path = args.save_folder + "vis_dag_graph.png"
-    labels = ut.get_labels(args.data_name)
-    ut.draw_directed_graph(W_est, vis_path, labels) 
-    
-    # Shape 
-    data_train = None
-    X100 = shap.utils.sample(X_train, 100)
-    explainer = shap.Explainer(notear_predict, X100)
-    shap_values = explainer(explained_data)
-    shap.plots.bar(shap_values, show=False)
-    plt.savefig('shap_on_notear.png')
-    
+        X = X.to_numpy()[:,1:].astype(float)
+        np.random.shuffle(X)
+        split_n = int((1-args.ratio_test)*X.shape[0])
+        X_train = X[:split_n,:]
+        X_test = X[split_n:, :]
+        d = X.shape[1]
+        
+        # Modeling
+        model = NotearsMLP(dims=[d, 10, 1], bias=True)
+        W_est = notears_nonlinear(model, X_train, wandb, args.lambda_reg, args.lambda1, args.lambda2)
+        # assert ut.is_dag(W_est)
+        print('Estimated: \n', W_est, W_est.shape)
+        np.savetxt(out_folder + 'W_est.csv', W_est, delimiter=',')
+        
+        # Evaluation regression on test set
+        cls_predict, target = pred_reg(X_test)
+        test_loss = 0.5 / target.shape[0] * np.sum((cls_predict - target) ** 2)
+        
+        ## Tobe dag
+        while(not ut.is_dag(W_est)):
+            min_val = np.unique(W_est)[1]
+            W_est[W_est == min_val] = 0
+            
+        ## Visualize graph 
+        vis_path = out_folder + "vis_dag_graph.png"
+        labels = ut.get_labels(args.data_name)
+        ut.draw_directed_graph(W_est, vis_path, labels) 
+        
+        print("test_loss: ", test_loss)
+        wandb.log({'test_loss': test_loss})
+        test_loss_lst.append(test_loss)
+        
+        # # Shape 
+        X100 = shap.utils.sample(X_train, 100)
+        explainer = shap.Explainer(pred_reg_only, X100)
+        shap_values = explainer(explained_data)
+        shap.plots.bar(shap_values, show=False)
+        plt.savefig(args.root_path + f'shap_on_{args.data_name}.png')
+        wandb.finish()
+        
+ 
 def arg_parser():
     parser = argparse.ArgumentParser()
     # path
     parser.add_argument("--root_path", 
-                        default="/workspace/tripx/MCS/xai_causality/run_v2/boston_housing", 
+                        default="/workspace/tripx/MCS/xai_causality/run_shap/boston_housing/", 
                         type=str)
     parser.add_argument("--data_path", 
                         default="/workspace/tripx/MCS/xai_causality/dataset/scaled_boston_housing.csv", 
@@ -249,9 +285,7 @@ def arg_parser():
     parser.add_argument("--data_name", 
                         default="boston_housing", 
                         type=str)
-    parser.add_argument("--save_folder", 
-                        default="/workspace/tripx/MCS/xai_causality/baseline_xai/shap", 
-                        type=str)
+    
     # training
     parser.add_argument("--lambda_reg", 
                         default=5, 
@@ -266,14 +300,16 @@ def arg_parser():
                         default=0.2, 
                         type=float)
     parser.add_argument("--no_seeds", 
-                        default=20, 
+                        default=1, 
                         type=int,
                         help='Number of random seed')
+    # log
+    parser.add_argument("--wandb_mode", 
+                        default="disabled", 
+                        type=str)
     
     return parser.parse_args()
-
-
-
+   
 if __name__ == '__main__':
     args = arg_parser()
     main(args)

@@ -219,6 +219,7 @@ def main(args):
         d = X.shape[1]
         
         # Modeling
+        print("type X_train ", X_train.dtype)
         model = NotearsMLP(dims=[d, 10, 1], bias=True)
         W_est = notears_nonlinear(model, X_train, wandb, args.lambda_reg, args.lambda1, args.lambda2)
         # assert ut.is_dag(W_est)
