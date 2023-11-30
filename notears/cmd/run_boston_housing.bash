@@ -6,4 +6,4 @@ python notears/xai_reg.py \
     --lambda_reg=5 \
     --lambda1=0.005 \
     --lambda2=0.0025 \
-    --no_seeds=20
+    --no_seeds=1

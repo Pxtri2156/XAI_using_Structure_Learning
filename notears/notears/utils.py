@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from tqdm import tqdm 
+from sklearn.inspection import PartialDependenceDisplay, partial_dependence
 
 def set_random_seed(seed):
     random.seed(seed)
@@ -378,5 +379,27 @@ def draw_seed_graphs(root_path, w_threshold, no_seeds, labels):
         vis_path = out_folder + f"vis_avg_graph_{str(w_threshold)}.png"
         draw_directed_graph(seed_W_est, vis_path, labels) 
         
-        
-    
+def partial_dependence_plot(X, model, save_path, selected_features, dataset_name):
+    features = range(0,X.shape[1])
+    # Train the model
+    # Create PartialDependenceDisplay object
+
+    if dataset_name == 'breast_cancer':
+        pdp_display = PartialDependenceDisplay.from_estimator(model, X, features=features, categorical_features=features, feature_names=selected_features[:-1], kind='average')
+    else:
+        pdp_display = PartialDependenceDisplay.from_estimator(model, X, features=features, feature_names=selected_features[:-1], kind='both')
+
+    # Create the partial dependence plot
+    fig, ax = plt.subplots(figsize=(10, 8))
+    pdp_display.plot(ax=ax, line_kw={'alpha': 0.1}, 
+                    pd_line_kw={'linewidth': 4, 'linestyle': '-', 'alpha': 0.8})
+    plt.tight_layout()
+    plt.legend().remove()
+    # Save the plot as an image
+    file_name = f'pdp_{dataset_name}.png'
+    plt.savefig(os.path.join(save_path, file_name))    
+
+def cal_pdp(model, X, feature_names):
+    features = range(0,X.shape[1])
+    pdp = partial_dependence(model, features=features, X=X, feature_names=feature_names, percentiles=(0, 1), grid_resolution=2) 
+    return pdp 

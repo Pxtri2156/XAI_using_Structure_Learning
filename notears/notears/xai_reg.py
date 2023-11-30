@@ -62,6 +62,15 @@ class NotearsMLP(nn.Module):
         x = x.squeeze(dim=2)  # [n, d]
         return x
 
+    def predict(self, x):
+        x = self.fc1_pos(x) - self.fc1_neg(x)  # [n, d * m1]
+        x = x.view(-1, self.dims[0], self.dims[1])  # [n, d, m1]
+        for fc in self.fc2:
+            x = torch.sigmoid(x)  # [n, d, m1]
+            x = fc(x)  # [n, d, m2]
+        x = x.squeeze(dim=2)  # [n, d]
+        return x[:,-1]
+    
     def h_func(self):
         """Constrain 2-norm-squared of fc1 weights along m1 dim to be a DAG"""
         d = self.dims[0]
@@ -74,7 +83,7 @@ class NotearsMLP(nn.Module):
         # E = torch.matrix_power(M, d - 1)
         # h = (E.t() * M).sum() - d
         return h
-
+        
     def l2_reg(self):
         """Take 2-norm-squared of all parameters"""
         reg = 0.
@@ -164,7 +173,6 @@ def dual_ascent_step(model, X, wandb, lambda_reg, lambda1, lambda2, rho, alpha, 
     alpha += rho * h_new
     return rho, alpha, h_new
 
-
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
                       wandb, 
@@ -184,7 +192,6 @@ def notears_nonlinear(model: nn.Module,
     W_est = model.fc1_to_adj()
     # W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
-
 
 def main(args):
     torch.set_default_dtype(torch.double)
@@ -219,7 +226,6 @@ def main(args):
         d = X.shape[1]
         
         # Modeling
-        print("type X_train ", X_train.dtype)
         model = NotearsMLP(dims=[d, 10, 1], bias=True)
         W_est = notears_nonlinear(model, X_train, wandb, args.lambda_reg, args.lambda1, args.lambda2)
         # assert ut.is_dag(W_est)
@@ -240,6 +246,11 @@ def main(args):
         test_loss_lst.append(test_loss)
         wandb.finish()
         
+        # Draw partial dependency
+        if args.draw_pdp:
+            feature_names = list(labels.values())
+            ut.cal_pdp(model, X_train, feature_names) 
+
     test_loss_lst =  np.array(test_loss_lst) 
     final_reg_results = { 'test_loss': {'mean': np.mean(test_loss_lst), 
                                         'std': np.std(test_loss_lst)},}
@@ -281,6 +292,9 @@ def arg_parser():
     parser.add_argument("--wandb_mode", 
                         default="online", 
                         type=str)
+    
+    parser.add_argument("--draw_pdp", 
+                        action='store_true') 
     
     return parser.parse_args()
    

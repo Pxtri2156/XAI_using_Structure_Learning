@@ -17,6 +17,7 @@ import notears.utils as ut
 from sklearn.metrics import classification_report, f1_score, accuracy_score
 import networkx as nx 
 import matplotlib.pyplot as plt
+from sklearn.inspection import PartialDependenceDisplay
 
 class NotearsMLP(nn.Module):
     def __init__(self, dims, bias=True):
@@ -211,7 +212,7 @@ def main(args):
     project_name = f'XAI_Classification_{args.data_name}'
     f1_list = []
     acc_list = []
-    for seed in range(args.no_seeds):
+    for seed in range(0,1):
         ut.set_random_seed(seed)
         seed_name = 'seed_'+str(seed)
         out_folder = args.root_path + f"{seed_name}"

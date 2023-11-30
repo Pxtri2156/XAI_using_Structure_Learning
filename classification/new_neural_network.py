@@ -32,10 +32,10 @@ class SimpleNN(nn.Module):
 # Check for GPU availability
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Device: ", device)
-result_path = '/workspace/tripx/MCS/xai_causality/classification/run/neural_network/diabetes.json'
+result_path = '/workspace/tripx/MCS/xai_causality/classification/run/neural_network/breast_cancer_uci.json'
 # data_path = '/dataset/PANCAN/STAD_gene_filter.csv'
 
-data_path = '/workspace/tripx/MCS/xai_causality/dataset/scaled_diabetes.csv'
+data_path = '/workspace/tripx/MCS/xai_causality/dataset/norm_breast_cancer_uci.csv'
 data = pd.read_csv(data_path)
 data = data.to_numpy()
 
@@ -45,7 +45,7 @@ hyperparameters = {
     'batch_size': [32, 64, 128],
     'learning_rate': [0.001, 0.01, 0.1],
     'optimizer': [optim.SGD, optim.Adam, optim.RMSprop],
-    'random_seeds': 15
+    'random_seeds': 20
 }
 
 best_f1_score = 0
