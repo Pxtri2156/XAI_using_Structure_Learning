@@ -258,6 +258,8 @@ def main(args):
     # Writing to sample.json
     with open(args.root_path + "final_reg.json", "w") as outfile:
         outfile.write(json_object)
+    
+    
  
 def arg_parser():
     parser = argparse.ArgumentParser()

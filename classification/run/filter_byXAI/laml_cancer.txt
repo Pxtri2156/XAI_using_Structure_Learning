@@ -1,0 +1,15 @@
+[0.         0.         1.51184933 0.         0.         0.
+ 0.         0.         0.         0.         0.         0.
+ 0.         0.         0.         0.         0.        ]
+[2]
+INFORMATION: LAML_CANCER
+ORIGINAL FEATURES: ['ASXL1', 'DNMT3A', 'FLT3', 'IDH1', 'IDH2', 'KIT', 'KRAS', 'NPM1', 'PTPDC1', 'PTPN11', 'RUNX1', 'SF3B1', 'SMC1A', 'TP53', 'U2AF1', 'WT1', 'disease']
+SELECTED FEATURES: ['FLT3', 'disease']
+SVC()
+ACC Average: 0.9600000000000004+-0.0
+F1 Average: 0.960000000000000426+-0.0
+---------------------------------------
+RandomForestClassifier()
+ACC Average: 0.9700000000000002+-0.0
+F1 Average: 0.9700000000000002+-0.00152
+---------------------------------------

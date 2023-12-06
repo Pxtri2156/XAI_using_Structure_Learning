@@ -1,0 +1,24 @@
+INFORMATION: FRIED_MAN1
+ORIGINAL FEATURES: ['feature_0', 'feature_1', 'feature_2', 'feature_3', 'feature_4', 'feature_5', 'feature_6', 'feature_7', 'feature_8', 'feature_9', 'target']
+SELECTED FEATURES: ['feature_0', 'feature_1', 'feature_2', 'feature_3', 'feature_4', 'feature_5', 'feature_6', 'feature_7', 'feature_8', 'feature_9', 'target']
+LinearRegression()
+Average: 0.0076315102666971195+-0.0
+---------------------------------------
+Ridge()
+Average: 0.0076809241622031845+-0.0
+---------------------------------------
+Lasso()
+Average: 0.03493716968826262+-0.0
+---------------------------------------
+ElasticNet()
+Average: 0.03493716968826262+-0.0
+---------------------------------------
+SVR()
+Average: 0.0077655352675867675+-0.0
+---------------------------------------
+DecisionTreeRegressor()
+Average: 0.014777528429134426+-0.0005952934580791166
+---------------------------------------
+RandomForestRegressor()
+Average: 0.0074972892371942945+-0.00023250729213442238
+---------------------------------------

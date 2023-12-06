@@ -1,0 +1,14 @@
+[0.2111373  0.05190534 0.1450272  0.60379865 0.20252921 1.90037486
+ 0.         0.09232783 0.2099229  0.        ]
+[0 1 2 3 4 5 7 8]
+INFORMATION: BREAST_CANCER
+ORIGINAL FEATURES: ['age', 'menopause', 'tumor-size', 'inv-nodes', 'node-caps', 'deg-malig', 'breast', 'breast-quad', 'irradiat', 'Class']
+SELECTED FEATURES: ['age', 'menopause', 'tumor-size', 'inv-nodes', 'node-caps', 'deg-malig', 'breast-quad', 'irradiat', 'Class']
+SVC()
+ACC Average: 0.6999999999999998+-0.0
+F1 Average: 0.5300000000000001+-0.0
+---------------------------------------
+RandomForestClassifier()
+ACC Average: 0.768+-0.02135415650406264
+F1 Average: 0.6833333333333333+-0.018135294011647225
+---------------------------------------

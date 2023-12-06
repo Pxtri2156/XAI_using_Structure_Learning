@@ -1,0 +1,24 @@
+INFORMATION: CALI_HOUSING
+ORIGINAL FEATURES: ['MedInc', 'HouseAge', 'AveRooms', 'AveBedrms', 'Population', 'AveOccup', 'Latitude', 'Longitude', 'price']
+SELECTED FEATURES: ['MedInc', 'HouseAge', 'AveBedrms', 'Latitude', 'Longitude', 'price']
+LinearRegression()
+Average: 0.0234516475746031+-0.0
+---------------------------------------
+Ridge()
+Average: 0.02327321863660654+-0.0
+---------------------------------------
+Lasso()
+Average: 0.055720491538156634+-0.0
+---------------------------------------
+ElasticNet()
+Average: 0.055720491538156634+-0.0
+---------------------------------------
+SVR()
+Average: 0.019006872263829022+-0.0
+---------------------------------------
+DecisionTreeRegressor()
+Average: 0.02024181302150286+-0.00018459536403397543
+---------------------------------------
+RandomForestRegressor()
+Average: 0.01067099100768241+-5.2402515687241706e-05
+---------------------------------------
