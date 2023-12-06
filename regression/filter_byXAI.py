@@ -108,17 +108,36 @@ def partial_dependence_plot(X, y, model_list, save_pdp_path, selected_features):
 def average_result(X, y, model_list):
     for model in model_list:
         mse = [] 
-        for seed in range(0,15): 
+        for seed in range(0,20): 
             set_random_seed(seed)
             X_train, X_test, y_train, y_test = dataset_split(X, y)
+      
+            if type(model) == type((LinearRegression())): 
+                model = LinearRegression()
+            elif type(model) == type(Ridge()): 
+                model = Ridge()
+            elif type(model) == type(Lasso()): 
+                model = Lasso()
+            elif type(model) == type(ElasticNet()): 
+                model = ElasticNet()
+            elif type(model) == type(svm.SVR()): 
+                model = svm.SVR()
+            elif type(model) == type(DecisionTreeRegressor()): 
+                model = DecisionTreeRegressor()
+            elif type(model) == type(RandomForestRegressor()): 
+                model = RandomForestRegressor()
+            else: 
+                print('Model training process problem!')
+            model.set_params(**model.get_params())
+
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
             mse.append(mean_squared_error(y_test, y_pred))
         print(model)
         #mean
-        mean_mse = round(sum(mse)/len(mse),2) 
+        mean_mse = sum(mse)/len(mse)
         #std
-        std_mse = round(st.pstdev(mse),5) 
+        std_mse = st.pstdev(mse) 
         print(f'Average: {mean_mse}+-{std_mse}')
         print('---------------------------------------')
 
@@ -131,8 +150,8 @@ def main(args):
     print(f'INFORMATION: {args.dataset.upper()}')
     print(f'ORIGINAL FEATURES: {list(original_data.columns)[1:]}')
     print(f'SELECTED FEATURES: {selected_features}')
-    # average_result(X, y, model_list, args.save_pdp_path, selected_features)
-    partial_dependence_plot(X, y,model_list, args.save_pdp_path, selected_features)
+    average_result(X, y, model_list)
+    # partial_dependence_plot(X, y,model_list, args.save_pdp_path, selected_features)
 
 
 def arg_parser():

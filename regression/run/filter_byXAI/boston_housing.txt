@@ -1,0 +1,25 @@
+INFORMATION: BOSTON_HOUSING
+ORIGINAL FEATURES: ['CRIM', 'INDUS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX', 'PTRATIO', 'B', 'LSTAT', 'MEDV']
+SELECTED FEATURES: ['RM', 'PTRATIO', 'LSTAT', 'MEDV']
+LinearRegression(fit_intercept=False)
+Average: 0.02+-0.0
+---------------------------------------
+Ridge(alpha=1, positive=True)
+Average: 0.02+-0.0
+---------------------------------------
+Lasso(alpha=1, positive=True)
+Average: 0.04+-0.0
+---------------------------------------
+ElasticNet(alpha=1, l1_ratio=0.0)
+Average: 0.03+-0.0
+---------------------------------------
+SVR(C=3, epsilon=0.0, gamma='auto')
+Average: 0.01+-0.0
+---------------------------------------
+DecisionTreeRegressor(max_leaf_nodes=50, min_samples_leaf=2,
+                      min_samples_split=5, random_state=42, splitter='random')
+Average: 0.01+-0.0
+---------------------------------------
+RandomForestRegressor()
+Average: 0.01+-0.00041
+---------------------------------------

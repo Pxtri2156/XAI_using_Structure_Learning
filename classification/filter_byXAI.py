@@ -48,16 +48,15 @@ def model_list_by_dataset(dataset_name):
         model_list = [svm.SVC(),
                 RandomForestClassifier()]
     elif dataset_name == 'breast_cancer': 
-        model_list = [RandomForestClassifier()]
+        model_list = [svm.SVC(),RandomForestClassifier()]
     elif dataset_name == 'laml_cancer': 
         model_list = [svm.SVC(),
                 RandomForestClassifier()]
     elif dataset_name == 'ov_cancer': 
-        model_list = [svm.SVC(),
-                RandomForestClassifier()]
+        model_list = [svm.SVC(C=10, decision_function_shape="ovr", kernel="rbf", random_state=100),
+                RandomForestClassifier(criterion='entropy', n_estimators=10, n_jobs=-1)]
     else: 
         print('Model list problem!')
-        
     return model_list
 
 def partial_dependence_plot(X, y, model_list, save_pdp_path, selected_features):
@@ -90,6 +89,16 @@ def average_result(X, y, model_list):
         for seed in range(0,15): 
             set_random_seed(seed)
             X_train, X_test, y_train, y_test = dataset_split(X, y)
+
+            # Define model and training
+            if type(model) == type((svm.SVC())): 
+                model = svm.SVC()
+            elif type(model) == type(RandomForestClassifier()): 
+                model = RandomForestClassifier()
+            else: 
+                print('Model training process problem!')
+            model.set_params(**model.get_params())
+
             model.fit(X_train, y_train)
             y_pred = model.predict(X_test)
             target_names = ["No", "Yes"]    
@@ -100,11 +109,11 @@ def average_result(X, y, model_list):
             f1_results.append(float(f1))
         print(model)
         #mean
-        mean_acc_results = round(sum(acc_results)/len(acc_results),2) 
-        mean_f1_results = round(sum(f1_results)/len(f1_results),2)
+        mean_acc_results = sum(acc_results)/len(acc_results)
+        mean_f1_results = sum(f1_results)/len(f1_results)
         #std
-        std_acc_results= round(st.pstdev(acc_results),5) 
-        std_f1_results = round(st.pstdev(f1_results),5) 
+        std_acc_results= st.pstdev(acc_results)
+        std_f1_results = st.pstdev(f1_results)
 
         print(f'ACC Average: {mean_acc_results}+-{std_acc_results}')
         print(f'F1 Average: {mean_f1_results}+-{std_f1_results}')
@@ -120,8 +129,8 @@ def main(args):
     print(f'INFORMATION: {args.dataset.upper()}')
     print(f'ORIGINAL FEATURES: {list(original_data.columns)[1:]}')
     print(f'SELECTED FEATURES: {selected_features}')
-    # average_result(X, y, model_list)
-    partial_dependence_plot(X, y,model_list, args.save_pdp_path, selected_features)
+    average_result(X, y, model_list)
+    # partial_dependence_plot(X, y,model_list, args.save_pdp_path, selected_features)
 
 
 def arg_parser():
