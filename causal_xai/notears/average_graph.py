@@ -37,22 +37,22 @@ def main(args):
     if not os.path.isdir(avg_seed_path):
         os.mkdir(avg_seed_path)
     avg_seed_path += '/'
-    ut.draw_head_map(std_W_est, avg_seed_path + f'std_array.png')
-    ut.draw_head_map(mean_W_est, avg_seed_path + f'mean_array.png')
+    ut.draw_head_map(std_W_est, avg_seed_path + f'std_array_{args.data_name}.pdf')
+    ut.draw_head_map(mean_W_est, avg_seed_path + f'mean_array_{args.data_name}.pdf')
     
     
     while(not ut.is_dag(mean_W_est)):
         min_val = np.unique(mean_W_est)[1]
         mean_W_est[mean_W_est == min_val] = 0
-        print(f'min_val: {min_val}')
+        # print(f'min_val: {min_val}')
         
     ## Save results with threshold 
-    np.savetxt(avg_seed_path + f'avg_dag_W_est.csv', mean_W_est, delimiter=',')
+    np.savetxt(avg_seed_path + f'avg_dag_W_est_{args.data_name}.csv', mean_W_est, delimiter=',')
 
     ## Visualize graph 
-    vis_path = avg_seed_path + f"vis_avg_dag_graph.png"
+    vis_path = avg_seed_path + f"vis_avg_dag_graph_{args.data_name}.pdf"
     ut.draw_directed_graph(mean_W_est, vis_path, labels) 
-    ut.draw_head_map(mean_W_est, avg_seed_path + f'mean_dag_array.png')
+    ut.draw_head_map(mean_W_est, avg_seed_path + f'mean_dag_array_{args.data_name}.pdf')
 
     # for w_threshold in thresholds_lst:
     #     tmp_W_est = mean_W_est.copy()

@@ -319,6 +319,15 @@ def get_labels(name):
         labels = {0:'0:ASXL1',1:'1:DNMT3A',2:'2:FLT3',3:'3:IDH1',4:'4:IDH2',5:'5:KIT',
                        6:'6:KRAS',7:'7:NPM1',8:'8:PTPDC1',9:'9:PTPN11',10:'10:RUNX1',11:'11:SF3B1',
                        12:'12:SMC1A',13:'13:TP53', 14:'14:U2AF1', 15:'15:WT1', 16:'16:LAML'}
+    elif name == 'laml_cancer_non_filter':
+        labels = {0:'0:ASXL1',1:'1:DNMT3A',2:'2:FLT3',3:'3:IDH1',4:'4:IDH2',5:'5:KIT',
+                       6:'6:KRAS',7:'7:NPM1',8:'8:PTPDC1',9:'9:PTPN11',10:'10:RUNX1',11:'11:SF3B1',
+                       12:'12:SMC1A',13:'13:TP53', 14:'14:U2AF1', 15:'15:WT1', 16:"16:LATS1",
+                       17:"17:DACH1", 18:"18:TGIF1", 19:'19:LAML'}
+    elif name == 'ov_cancer_non_filter': 
+        labels = {0:'0:BRCA1',1:'1:CDK12',2:'2:KRAS',3:'3:NF1',4:'4:NRAS',5:'5:RB1',6:'6:TP53',7:'7:ZNF133',
+                  8:"8:TGIF1", 9:"9:WHSC1", 10:"10:CREB3L3", 11:"11:POLRMT", 12:"12:SMARCB1", 13:"13:DIAPH2",
+                  14:'14:OV'}
     
     elif name == 'stad_cancer':
         labels = {0:'0:APC', 1:'1:ARID1A', 2:'2:ARID2', 3:'3:BCOR', 4:'4:CASP8', 5:'5:CDH1',
@@ -328,7 +337,7 @@ def get_labels(name):
         
     elif name == "adult_income":
         labels = {0:'0:hours', 1:'1:edu', 2:'2:job', 3:'3:w_class',
-                  4: '4:race', 5: '5:age', 6:'6:marital', 7:'7:sex', 8:'8:income'}
+                  4: '4:race', 5: '5:age', 6:'6:marry', 7:'7:sex', 8:'8:income'}
         
     elif name == "boston_housing":
         labels = {0:'0:CRIM', 1:'1:INDUS', 2:'2:NOX', 3:'3:RM', 4: '4:AGE', 5:'5:DIS', 6:'6:RAD', 
