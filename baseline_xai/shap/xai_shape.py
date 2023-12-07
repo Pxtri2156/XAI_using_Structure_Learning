@@ -184,6 +184,7 @@ def notears_nonlinear(model: nn.Module,
 def notear_predict(X_train):
     return 10
 
+<<<<<<< HEAD:baseline_xai/shap/xai_shape.py
 def main(args):
     X_train = None 
     data_train = None
@@ -193,6 +194,18 @@ def main(args):
     shap.plots.bar(shap_values, show=False)
     plt.savefig('shap_on_notear.png')
     
+=======
+    test_loss_lst =  np.array(test_loss_lst) 
+    final_reg_results = { 'test_loss': {'mean': np.mean(test_loss_lst), 
+                                        'std': np.std(test_loss_lst)},}
+    json_object = json.dumps(final_reg_results, indent=4)
+    # Writing to sample.json
+    with open(args.root_path + "final_reg.json", "w") as outfile:
+        outfile.write(json_object)
+    
+    
+ 
+>>>>>>> 93b0fc029bf61d3e18a22dac26a888d1e620eb4e:notears/notears/xai_reg.py
 def arg_parser():
     parser = argparse.ArgumentParser()
     # path

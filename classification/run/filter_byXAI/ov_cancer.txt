@@ -1,0 +1,14 @@
+[0.63837502 0.         0.51457201 1.53707794 1.77354506 0.46357874
+ 0.24037066 1.66684574 0.        ]
+[0 2 3 4 5 6 7]
+INFORMATION: OV_CANCER
+ORIGINAL FEATURES: ['BRCA1', 'CDK12', 'KRAS', 'NF1', 'NRAS', 'RB1', 'TP53', 'ZNF133', 'disease']
+SELECTED FEATURES: ['BRCA1', 'KRAS', 'NF1', 'NRAS', 'RB1', 'TP53', 'ZNF133', 'disease']
+SVC()
+ACC Average: 0.9299999999999998+-0.0
+F1 Average: 0.9299999999999998+-0.0
+---------------------------------------
+RandomForestClassifier()
+ACC Average: 0.91+-0.010327955589886454
+F1 Average: 0.91+-0.010327955589886454
+---------------------------------------
