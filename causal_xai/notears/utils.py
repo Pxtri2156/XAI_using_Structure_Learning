@@ -9,16 +9,15 @@ import seaborn as sns
 import os
 from tqdm import tqdm 
 from sklearn.inspection import PartialDependenceDisplay, partial_dependence
+from collections import deque
 
 def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
 
-
 def is_dag(W):
     G = ig.Graph.Weighted_Adjacency(W.tolist())
     return G.is_dag()
-
 
 def simulate_dag(d, s0, graph_type):
     """Simulate random DAG with some expected number of edges.
@@ -62,7 +61,6 @@ def simulate_dag(d, s0, graph_type):
     assert ig.Graph.Adjacency(B_perm.tolist()).is_dag()
     return B_perm
 
-
 def simulate_parameter(B, w_ranges=((-2.0, -0.5), (0.5, 2.0))):
     """Simulate SEM parameters for a DAG.
 
@@ -79,7 +77,6 @@ def simulate_parameter(B, w_ranges=((-2.0, -0.5), (0.5, 2.0))):
         U = np.random.uniform(low=low, high=high, size=B.shape)
         W += B * (S == i) * U
     return W
-
 
 def simulate_linear_sem(W, n, sem_type, noise_scale=None):
     """Simulate samples from linear SEM with specified type of noise.
@@ -144,7 +141,6 @@ def simulate_linear_sem(W, n, sem_type, noise_scale=None):
         parents = G.neighbors(j, mode=ig.IN)
         X[:, j] = _simulate_single_equation(X[:, parents], W[parents, j], scale_vec[j])
     return X
-
 
 def simulate_nonlinear_sem(B, n, sem_type, noise_scale=None):
     """Simulate samples from nonlinear SEM.
@@ -412,3 +408,42 @@ def cal_pdp(model, X, feature_names):
     features = range(0,X.shape[1])
     pdp = partial_dependence(model, features=features, X=X, feature_names=feature_names, percentiles=(0, 1), grid_resolution=2) 
     return pdp 
+
+def shortest_path(adj_matrix, start, end):
+    if not 0 <= start < len(adj_matrix) or not 0 <= end < len(adj_matrix):
+        raise ValueError("Invalid start or end node")
+
+    # Initialize visited array to keep track of visited nodes
+    visited = [False] * len(adj_matrix)
+
+    # Initialize queue for BFS and enqueue the start node
+    queue = deque([(start, [])])
+
+    while queue:
+        current_node, path = queue.popleft()
+        visited[current_node] = True
+
+        for neighbor, has_path in enumerate(adj_matrix[current_node]):
+            if has_path == 1 and not visited[neighbor]:
+                if neighbor == end:
+                    # Return the shortest path
+                    return path + [current_node, neighbor]
+
+                # Enqueue the neighbor with the updated path
+                queue.append((neighbor, path + [current_node]))
+
+    # If no path is found
+    return None
+
+def get_contribution(adjacency_matrix):
+    vertices = len(adjacency_matrix[0]) - 1 
+    end_node = vertices
+    contribution_dic = {}
+    for start_node in range(vertices):
+        result = shortest_path(adjacency_matrix, start_node, end_node)
+        if result:
+            contribution_values = 1/(len(result)-1)
+        else:
+            contribution_values=0 
+        contribution_dic[str(start_node)] = contribution_values
+    return contribution_dic
