@@ -1,0 +1,10 @@
+STT,Feature,CEM,NAM,Shapley_SVM
+0,age,1.00,0.31,0.01
+1,menopause,1.00,0.25,0.0
+2,tumor-size,1.00,0.17,0.08
+3,inv-nodes,1.00,0.24,0.16
+4,node-caps,1.00,0.32,0.01
+5,deg-malig,1.00,0.35,0.01
+6,breast,0.50,0.08,0.01
+7,breast-quad,1.00,0.16,0.01
+8,irradiat,1.00,0.21,0.01
