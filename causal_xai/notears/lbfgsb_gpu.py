@@ -1,7 +1,9 @@
 import torch
 import scipy.optimize as sopt
+import jax.numpy as jnp
+from jax.scipy.optimize import minimize as jax_minimize
 
-class LBFGSBScipy(torch.optim.Optimizer):
+class LBFGSBGPU(torch.optim.Optimizer):
     """Wrap L-BFGS-B algorithm, using scipy routines.
     
     Courtesy: Arthur Mensch's gist
@@ -10,10 +12,10 @@ class LBFGSBScipy(torch.optim.Optimizer):
 
     def __init__(self, params):
         defaults = dict()
-        super(LBFGSBScipy, self).__init__(params, defaults)
+        super(LBFGSBGPU, self).__init__(params, defaults)
 
         if len(self.param_groups) != 1:
-            raise ValueError("LBFGSBScipy doesn't support per-parameter options"
+            raise ValueError("LBFGSBGPU doesn't support per-parameter options"
                              " (parameter groups)")
 
         self._params = self.param_groups[0]['params']
@@ -79,13 +81,18 @@ class LBFGSBScipy(torch.optim.Optimizer):
             return loss, flat_grad.astype('float64')
 
         initial_params = self._gather_flat_params()
-        initial_params = initial_params.cpu().detach().numpy()
+        initial_params = initial_params.cpu().detach().numpy() # To do
 
         bounds = self._gather_flat_bounds()
-        # print(len(bounds))
-        # print("bounds: ", bounds)
-        # input("hihi")
+
         # Magic
+        # initial_params = jnp.asarray(initial_params)
+        # sol = jax_minimize(wrapped_closure,
+        #                     initial_params,
+        #                     method='L-BFGS-B',
+        #                     jac=True,
+        #                     bounds=bounds)
+        
         sol = sopt.minimize(wrapped_closure,
                             initial_params,
                             method='L-BFGS-B',
@@ -110,7 +117,7 @@ def main():
     for m in range(out):
         linear.weight.bounds[m * d + j] = (0, 0)
     criterion = nn.MSELoss()
-    optimizer = LBFGSBScipy(linear.parameters())
+    optimizer = LBFGSBGPU(linear.parameters())
     print(list(linear.parameters()))
 
     def closure():
