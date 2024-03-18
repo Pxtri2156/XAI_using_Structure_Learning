@@ -2,10 +2,12 @@ import pytorch_lightning as pl
 import torch
 from torch import nn
 from torchmetrics.classification import BinaryF1Score
+from torcheval.metrics import R2Score
+from sklearn.metrics import r2_score
 
 from nam.trainer.losses import penalized_loss
 from nam.trainer.metrics import accuracy
-from nam.trainer.metrics import mae
+from nam.trainer.metrics import mae, mse
 from nam.types import Config
 
 
@@ -16,11 +18,12 @@ class LitNAM(pl.LightningModule):
         self.config = Config(**vars(config))  #config
         self.model = model
         self.f1_score_metric = BinaryF1Score()
+        self.r2_score_metric = R2Score()
         self.criterion = lambda inputs, targets, weights, fnns_out, model: penalized_loss(
             self.config, inputs, targets, weights, fnns_out, model)
 
-        self.metrics = lambda logits, targets: mae(logits, targets) if config.regression else accuracy(logits, targets)
-        self.metrics_name = "MAE" if config.regression else "Accuracy"
+        self.metrics = lambda logits, targets: mse(logits, targets) if config.regression else accuracy(logits, targets)
+        self.metrics_name = "MSE" if config.regression else "Accuracy"
 
         self.save_hyperparameters(vars(self.config))
 
@@ -86,13 +89,21 @@ class LitNAM(pl.LightningModule):
         loss = self.criterion(logits, targets, None, fnns_out, self.model)
         metric = self.metrics(logits, targets)
         f1_score = -1
+        r2 = -5
         if self.config.regression is False:
             f1_score = self.f1_score_metric(logits.view(-1), targets.view(-1))
+        else: 
+            # self.r2_score_metric.update(logits.view(-1), targets.view(-1))
+            # r2 = self.r2_score_metric.compute()
+            print(logits.view(-1).tolist())
+            print(targets.view(-1).tolist())
+            r2 = r2_score(logits.view(-1).tolist(), targets.view(-1).tolist())
         self.log_dict(
             {
                 'test_loss': loss,
                 f"{self.metrics_name}_metric": metric,
-                "f1_score": f1_score
+                "f1_score": f1_score,
+                'r2': r2
             },
             on_step=True,
             on_epoch=True,

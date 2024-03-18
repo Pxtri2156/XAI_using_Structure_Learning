@@ -36,7 +36,7 @@ def main(args):
   acc_list = []
   f1_list = []
   mse_list = []
-
+  r2_list = []
   for seed in range(args.no_seeds):
     random.seed(seed)
     np.random.seed(seed)
@@ -82,8 +82,10 @@ def main(args):
       f1_list.append(f1)
 
     else:
-      mse = results[0]["MAE_metric_epoch"]
+      mse = results[0]["MSE_metric_epoch"]
+      r2_result = results[0]["r2_epoch"]
       mse_list.append(mse)
+      r2_list.append(r2_result)
       
     # fig = plot_mean_feature_importance(litmodel.model, dataset)
     # fig.savefig(f"{out_folder}NAM_{args.data_name}.png")    
@@ -108,12 +110,15 @@ def main(args):
   acc_list = np.array(acc_list)
   f1_list = np.array(f1_list)
   mse_list = np.array(mse_list)
+  r2_list = np.array(r2_list)
   final_cls_results = { 'accuracy': {'mean': np.mean(acc_list), 
                                       'std': np.std(acc_list)},
                       'f1_score': {'mean': np.mean(f1_list),
                                   'std': np.std(f1_list)},
                       'mse': {'mean': np.mean(mse_list),
-                              'std': np.std(mse_list)}
+                              'std': np.std(mse_list)},
+                      'r2': {'mean': np.mean(r2_list),
+                              'std': np.std(r2_list)}
   }  
   json_object = json.dumps(final_cls_results, indent=4)
   # Writing to sample.json

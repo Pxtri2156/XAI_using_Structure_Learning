@@ -233,7 +233,7 @@ def main(args):
             mode=args.wandb_mode)
 
         # Read and process data
-        X, X_train, X_test = ut.read_data(args.data_path, out_folder, args.ratio_test)
+c        print("X: ", X)
         d = X.shape[1]
         
         # Modeling

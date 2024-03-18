@@ -83,7 +83,7 @@ def arg_parser():
                         type=str)
     # training
     parser.add_argument("--no_seeds", 
-                        default=20, 
+                        default=7, 
                         type=int,
                         help='Number of random seed')
 

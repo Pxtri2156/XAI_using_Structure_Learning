@@ -1,5 +1,7 @@
 import  sys
 sys.path.append("./")
+import wandb 
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -7,9 +9,21 @@ import scipy.linalg as slin
 import scipy.optimize as sopt
 from scipy.special import expit as sigmoid
 from notears import utils
+import time
 
+def benchmark_me():
+    def decorator(function):
+        def wraps(*args, **kwargs):
+            start = time.time()
+            result = function(*args, **kwargs)
+            end = time.time()
+            # print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
+            wandb.log({function.__name__:(end - start) *10**3})
+            return result
+        return wraps
+    return decorator
 
-def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
+def notears_linear(X,wandb, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
     """Solve min_W L(W; X) + lambda1 ‖W‖_1 s.t. h(W) = 0 using augmented Lagrangian.
 
     Args:
@@ -24,6 +38,7 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
     Returns:
         W_est (np.ndarray): [d, d] estimated DAG
     """
+    @benchmark_me()
     def _loss(W):
         """Evaluate value and gradient of loss."""
         M = X @ W
@@ -41,7 +56,8 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
         else:
             raise ValueError('unknown loss type')
         return loss, G_loss
-
+    
+    @benchmark_me()
     def _h(W):
         """Evaluate value and gradient of acyclicity constraint."""
         E = slin.expm(W * W)  # (Zheng et al. 2018)
@@ -53,10 +69,12 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
         G_h = E.T * W * 2
         return h, G_h
 
+    @benchmark_me()
     def _adj(w):
         """Convert doubled variables ([2 d^2] array) back to original variables ([d, d] matrix)."""
         return (w[:d * d] - w[d * d:]).reshape([d, d])
-
+    
+    @benchmark_me()
     def _func(w):
         """Evaluate value and gradient of augmented Lagrangian for doubled variables ([2 d^2] array)."""
         W = _adj(w)
@@ -72,10 +90,13 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
     bnds = [(0, 0) if i == j else (0, None) for _ in range(2) for i in range(d) for j in range(d)]
     if loss_type == 'l2':
         X = X - np.mean(X, axis=0, keepdims=True)
-    for _ in range(max_iter):
+    for i in range(max_iter):
         w_new, h_new = None, None
         while rho < rho_max:
+            start_t = time.time()
             sol = sopt.minimize(_func, w_est, method='L-BFGS-B', jac=True, bounds=bnds)
+            end_t = time.time()
+            print(f"Iter: {i} Exec time steps: {(end_t - start_t)*10**3} ms")
             w_new = sol.x
             h_new, _ = _h(_adj(w_new))
             if h_new > 0.25 * h:
@@ -83,6 +104,9 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
             else:
                 break
         w_est, h = w_new, h_new
+        wandb.log({"h": h, 
+                   "alpha": alpha, 
+                   "rho": rho})
         alpha += rho * h
         if h <= h_tol or rho >= rho_max:
             break
@@ -91,27 +115,61 @@ def notears_linear(X, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+1
     return W_est
 
 
-if __name__ == '__main__':
+def main(args):
     # utils.set_random_seed(1)
-    n, d, s0, graph_type, sem_type = 100, 20, 20, 'ER', 'gauss'
+    cfg = f'cfg_{str(args.cfg)}'
+    out_folder = f"{args.root_path}{cfg}/linear/"
+    n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions, 'ER', 'gauss'
+    
+    wandb.init(
+        project="linear_notear",
+        name=f"linear_notea_{cfg}",
+        config={
+        "samples": n,
+        "dimension": d,},
+        dir=out_folder,
+        mode=args.wandb_mode)
+    
     B_true = utils.simulate_dag(d, s0, graph_type)
     W_true = utils.simulate_parameter(B_true)
-    np.savetxt('W_true.csv', W_true, delimiter=',')
+    np.savetxt(out_folder +'W_true.csv', W_true, delimiter=',')
 
-    # data_path = "/workspace/tripx/MCS/xai_causality/dataset/breast_cancer_uci.csv"
-    # X = pd.read_csv(data_path)
-    # X = X.drop(['Unnamed: 0'], axis=1)
-    # X = X.to_numpy()
     X = utils.simulate_linear_sem(W_true, n, sem_type)
-    print('X: \n', X.shape)
-    # print("X: ", X)
-    # input("Stop")
-    np.savetxt('X.csv', X, delimiter=',')
-
-    W_est = notears_linear(X, lambda1=0.1, loss_type='l2')
+    np.savetxt(out_folder +'X.csv', X, delimiter=',')
+    
+    start = time.time() 
+    W_est = notears_linear(X, wandb, lambda1=0.1, loss_type='l2')
+    end = time.time()
+    print("The time of execution of above program is :",
+      (end-start) * 10**3, "ms")
     print('W_est: ', W_est.shape)
     assert utils.is_dag(W_est)
-    np.savetxt('W_est.csv', W_est, delimiter=',')
-    # acc = utils.count_accuracy(B_true, W_est != 0)
-    # print(acc)
+    np.savetxt(out_folder +'W_est.csv', W_est, delimiter=',')
+    acc = utils.count_accuracy(B_true, W_est != 0)
+    print(acc)
 
+def arg_parser():
+    parser = argparse.ArgumentParser()
+    # path
+    parser.add_argument("--root_path", 
+                        default="/workspace/tripx/MCS/xai_causality/run_v7/", 
+                        type=str)
+    parser.add_argument("--cfg", 
+                        default=0, 
+                        type=int)
+
+    parser.add_argument("--samples", 
+                        default=300, 
+                        type=int)
+    parser.add_argument("--dimensions", 
+                        default=20, 
+                        type=int)
+    parser.add_argument("--wandb_mode", 
+                        default="disabled", 
+                        type=str)
+    
+    return parser.parse_args()
+   
+if __name__ == '__main__':
+    args = arg_parser()
+    main(args)

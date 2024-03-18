@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score
+
 import numpy as np
 import pandas as pd
 import random 
@@ -37,14 +39,20 @@ learning_rates = [0.001, 0.01, 0.1]
 epochs_list = [50, 100, 200]
 optimizers_list = ['Adam', 'SGD']
 
+# learning_rates = [0.01]
+# epochs_list = [50]
+# optimizers_list = ['Adam']
+
 best_model = None
 mean_best_loss = float('inf')
 best_results = None 
+mean_best_r2 = -1
 
 for lr in learning_rates:
     for epochs in epochs_list:
         for optimizer_name in optimizers_list:
             test_loss_list = []
+            r2_list = []
             for seed in range(20):
                 np.random.seed(seed)
                 random.seed(seed)
@@ -97,19 +105,24 @@ for lr in learning_rates:
                     y_pred = model(X_test_tensor)
 
                 # Convert predictions and ground truth to numpy arrays
-                y_pred = y_pred.cpu().numpy()
+                y_pred = y_pred.view(-1).cpu().numpy()
                 y_test_np = y_test_tensor.numpy()
 
                 # Calculate test set performance metrics (e.g., Mean Squared Error)
                 mse = np.mean((y_pred - y_test_np)**2)
+                r2 =  r2_score( y_pred, y_test_np)
                 test_loss_list.append(mse)
-                
+                r2_list.append(r2)
                 # Print the results
                 # print(f"Learning Rate: {lr}, Epochs: {epochs}, Optimizer: {optimizer_name}, Loss: {mse}")
                 
             test_loss_list = np.array(test_loss_list)
+            r2_list =  np.array(r2_list)
             dict_results = { 'test_loss': {'mean': np.mean(test_loss_list), 
-                                                'std': np.std(test_loss_list)},} 
+                                                'std': np.std(test_loss_list)},
+                            'r2': {'mean': np.mean(r2_list), 
+                                    'std': np.std(r2_list)},}
+            
             print(f"Learning Rate: {lr}, Epochs: {epochs}, Optimizer: {optimizer_name}, Result: {dict_results}")
             # Update the best model if the current model is better
             if dict_results['test_loss']['mean'] < mean_best_loss:

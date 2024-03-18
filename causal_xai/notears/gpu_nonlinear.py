@@ -1,7 +1,9 @@
 import  sys
 sys.path.append("./")
 from notears.locally_connected import LocallyConnected
-from notears.lbfgsb_scipy import LBFGSBScipy
+# from notears.lbfgsb_scipy import LBFGSBScipy
+from notears.lbfgsb_gpu import LBFGSBGPU
+
 from notears.trace_expm import trace_expm
 import torch
 import torch.nn as nn
@@ -9,6 +11,7 @@ import numpy as np
 import math
 import pandas as pd
 import time
+from pytorch_minimize.optim import MinimizeWrapper
 
 class NotearsMLP(nn.Module):
     def __init__(self, dims, bias=True):
@@ -41,7 +44,7 @@ class NotearsMLP(nn.Module):
                     bounds.append(bound)
         # constraint y=0 (chú ý số chiều)
         return bounds
-
+ 
     def forward(self, x):  # [n, d] -> [n, d]
         x = self.fc1_pos(x) - self.fc1_neg(x)  # [n, d * m1]
         x = x.view(-1, self.dims[0], self.dims[1])  # [n, d, m1]
@@ -57,7 +60,7 @@ class NotearsMLP(nn.Module):
         fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j * m1, i]
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
-        h = trace_expm(A) - d  # (Zheng et al. 2018)
+        h = trace_expm(A.cpu()) - d  # (Zheng et al. 2018)
         # A different formulation, slightly faster at the cost of numerical stability
         # M = torch.eye(d) + A / d  # (Yu et al. 2019)
         # E = torch.matrix_power(M, d - 1)
@@ -88,88 +91,40 @@ class NotearsMLP(nn.Module):
         W = torch.sqrt(A)  # [i, j]
         W = W.cpu().detach().numpy()  # [i, j]
         return W
-
-class NotearsSobolev(nn.Module):
-    def __init__(self, d, k):
-        """d: num variables k: num expansion of each variable"""
-        super(NotearsSobolev, self).__init__()
-        self.d, self.k = d, k
-        self.fc1_pos = nn.Linear(d * k, d, bias=False)  # ik -> j
-        self.fc1_neg = nn.Linear(d * k, d, bias=False)
-        self.fc1_pos.weight.bounds = self._bounds()
-        self.fc1_neg.weight.bounds = self._bounds()
-        nn.init.zeros_(self.fc1_pos.weight)
-        nn.init.zeros_(self.fc1_neg.weight)
-        self.l2_reg_store = None
-
-    def _bounds(self):
-        # weight shape [j, ik]
-        bounds = []
-        for j in range(self.d):
-            for i in range(self.d):
-                for _ in range(self.k):
-                    if i == j:
-                        bound = (0, 0)
-                    else:
-                        bound = (0, None)
-                    bounds.append(bound)
-        return bounds
-
-    def sobolev_basis(self, x):  # [n, d] -> [n, dk]
-        seq = []
-        for kk in range(self.k):
-            mu = 2.0 / (2 * kk + 1) / math.pi  # sobolev basis
-            psi = mu * torch.sin(x / mu)
-            seq.append(psi)  # [n, d] * k
-        bases = torch.stack(seq, dim=2)  # [n, d, k]
-        bases = bases.view(-1, self.d * self.k)  # [n, dk]
-        return bases
-
-    def forward(self, x):  # [n, d] -> [n, d]
-        bases = self.sobolev_basis(x)  # [n, dk]
-        x = self.fc1_pos(bases) - self.fc1_neg(bases)  # [n, d]
-        self.l2_reg_store = torch.sum(x ** 2) / x.shape[0]
-        return x
-
-    def h_func(self):
-        fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j, ik]
-        fc1_weight = fc1_weight.view(self.d, self.d, self.k)  # [j, i, k]
-        A = torch.sum(fc1_weight * fc1_weight, dim=2).t()  # [i, j]
-        h = trace_expm(A) - d  # (Zheng et al. 2018)
-        # A different formulation, slightly faster at the cost of numerical stability
-        # M = torch.eye(self.d) + A / self.d  # (Yu et al. 2019)
-        # E = torch.matrix_power(M, self.d - 1)
-        # h = (E.t() * M).sum() - self.d
-        return h
-
-    def l2_reg(self):
-        reg = self.l2_reg_store
-        return reg
-
-    def fc1_l1_reg(self):
-        reg = torch.sum(self.fc1_pos.weight + self.fc1_neg.weight)
-        return reg
-
-    @torch.no_grad()
-    def fc1_to_adj(self) -> np.ndarray:
-        fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j, ik]
-        fc1_weight = fc1_weight.view(self.d, self.d, self.k)  # [j, i, k]
-        A = torch.sum(fc1_weight * fc1_weight, dim=2).t()  # [i, j]
-        W = torch.sqrt(A)  # [i, j]
-        W = W.cpu().detach().numpy()  # [i, j]
-        return W
+    
+def gather_flat_bounds(model):
+    bounds = []
+    for p in model.parameters():
+        if hasattr(p, 'bounds'):
+            b = p.bounds
+        else:
+            b = [(None, None)] * p.numel()
+        bounds += b
+    
+    return bounds
 
 def squared_loss(output, target):
     # Use weight
+    # Loss = causal(X:1->d) + Lambda*classification (y = f_c(X))
+    # Lambda > 1: focus classification
     n = target.shape[0]
     loss = 0.5 / n * torch.sum((output - target) ** 2)
     return loss
 
-def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
+def dual_ascent_step(model, X, device, lambda1, lambda2, rho, alpha, h, rho_max):
     """Perform one step of dual ascent in augmented Lagrangian."""
     h_new = None
-    optimizer = LBFGSBScipy(model.parameters())
+    model.to(device)
+    flat_bounds = gather_flat_bounds(model)
+    minimizer_args = dict(method='L-BFGS-B', jac=True, bounds=flat_bounds, options={'disp':True, 'maxiter':100})
+    optimizer = MinimizeWrapper(model.parameters(), minimizer_args)
+    
+    # optimizer = LBFGSBGPU(model.parameters())
+    # optimizer = torch.optim.LBFGS(model.parameters())
     X_torch = torch.from_numpy(X)
+    X_torch = X_torch.to(device)
+    # X_torch = jnp.asarray(X_torch)
+
     while rho < rho_max:
         def closure():
             optimizer.zero_grad()
@@ -183,7 +138,18 @@ def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
             primal_obj.backward()
             return primal_obj
         optimizer.step(closure)  # NOTE: updates model in-place
-        with torch.no_grad():
+        # # Set constraint 
+        # for name, param in model.named_parameters():
+        #     if "fc1" in name and "weight" in name:
+        #         param.data.clamp_(0, None)
+        #         start_idx = 0
+        #         # print('Before: ', name, param.data)
+        #         for k in range(model.dims[0]):
+        #             end_indx = start_idx + model.dims[1]
+        #             # print("Blocks " + str(k), param[start_idx:end_indx,k])
+        #             param[start_idx:end_indx,k].data.clamp_(0, 0)
+        #             start_idx=end_indx
+        with torch.no_grad():          
             h_new = model.h_func().item()
         if h_new > 0.25 * h:
             rho *= 10
@@ -192,8 +158,10 @@ def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
     alpha += rho * h_new
     return rho, alpha, h_new
 
+
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
+                      device,
                       lambda1: float = 0.,
                       lambda2: float = 0.,
                       max_iter: int = 100,
@@ -202,47 +170,52 @@ def notears_nonlinear(model: nn.Module,
                       w_threshold: float = 0.3):
     rho, alpha, h = 1.0, 0.0, np.inf
     for _ in range(max_iter):
-        rho, alpha, h = dual_ascent_step(model, X, lambda1, lambda2,
+        rho, alpha, h = dual_ascent_step(model, X, device, lambda1, lambda2,
                                          rho, alpha, h, rho_max)
         if h <= h_tol or rho >= rho_max:
             break
-        
     print("h: ", h)
     W_est = model.fc1_to_adj()
     W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
 
 def main():
+    data_path="/dataset/DREAM5/X_B_true/X_1.csv"
+    gt_path="/dataset/DREAM5/X_B_true/B_true_1.csv"
+    out_path="/workspace/tripx/MCS/xai_causality/run/run_v8/"
+    
     torch.set_default_dtype(torch.double)
     np.set_printoptions(precision=3)
 
     import notears.utils as ut
     ut.set_random_seed(123)
+    device = torch.device("cuda")
 
-    n, d, s0, graph_type, sem_type = 200,5, 9, 'ER', 'mim'
-    B_true = ut.simulate_dag(d, s0, graph_type)
-    np.savetxt('W_true.csv', B_true, delimiter=',')
+    # n, d, s0, graph_type, sem_type = 200, 100, 50, 'ER', 'mim'
+    # B_true = ut.simulate_dag(d, s0, graph_type)
+    X = pd.read_csv(data_path, header=None)
+    X = X.to_numpy().astype(float)
+    d = X.shape[1]
+    print("d: ", d)
+    print("Shape X: ", X.shape)
+    B_true = pd.read_csv(gt_path, header=None)
+    B_true = B_true.to_numpy().astype(float)
+    # print("B_true: ", B_true)
+    print("Shape B_true : ", B_true.shape)
+    np.savetxt(out_path + 'W_true.csv', B_true, delimiter=',')
 
-    X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
+    # X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
     
-    # data_path = "/workspace/tripx/MCS/xai_causality/dataset/breast_cancer_uci.csv"
-    # X = pd.read_csv(data_path)
-    # X = X.to_numpy()
-    # print("X: ", X.shape)
-    # d = X.shape[1]
-    # print("d: ", d)
-    print("type X: ", type(X))
-    np.savetxt('X.csv', X, delimiter=',')
+    # print("type X: ", type(X))
+    
+    np.savetxt(out_path + 'X.csv', X, delimiter=',')
 
-    model = NotearsMLP(dims=[d, 10, 1], bias=True)
-    W_est = notears_nonlinear(model, X, lambda1=0.01, lambda2=0.01)
+    model = NotearsMLP(dims=[d, 100, 1], bias=True)
+    W_est = notears_nonlinear(model, X, device, lambda1=0.01, lambda2=0.01)
     assert ut.is_dag(W_est)
-    np.savetxt('W_est.csv', W_est, delimiter=',')
-    # acc = ut.count_accuracy(B_true, W_est != 0)
-    # print(acc)
-
+    np.savetxt(out_path + 'W_est.csv', W_est, delimiter=',')
+    acc = ut.count_accuracy(B_true, W_est != 0)
+    print(acc)
 
 if __name__ == '__main__':
-    start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time() - start_time))
