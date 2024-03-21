@@ -2,7 +2,7 @@ import  sys
 sys.path.append("./")
 import wandb 
 import argparse
-
+import torch 
 import numpy as np
 import pandas as pd
 import scipy.linalg as slin
@@ -10,6 +10,7 @@ import scipy.optimize as sopt
 from scipy.special import expit as sigmoid
 from notears import utils
 import time
+eps = 1e-8
 
 def benchmark_me():
     def decorator(function):
@@ -23,7 +24,46 @@ def benchmark_me():
         return wraps
     return decorator
 
-def notears_linear(X,wandb, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
+def series(x):
+    """
+    compute the matrix series: \sum_{k=0}^{\infty}\frac{x^{k}}{(k+1)!}
+    """
+    s = torch.eye(x.size(-1), dtype=torch.double)
+    t = x / 2
+    k = 3
+    while torch.norm(t, p=1, dim=-1).max().item() > eps:
+        s = s + t
+        t = torch.matmul(x, t) / k
+        k = k + 1
+    return s
+
+def cal_expm(A, B, I):
+    """
+    Compute the expm based on A, B
+    """
+    V = B.matmul(A)
+    series_V = series(V)
+    expm_W = I + (A.matmul(series_V)).matmul(B)
+    expm_W = expm_W.numpy()
+    return expm_W
+    
+def matrix_factorization(W, t):
+    # Perform SVD on matrix W
+    W = torch.from_numpy(W)
+    U, S, V = torch.svd(W)
+    
+    # Take the first t singular values and vectors
+    Ut = U[:, :t]
+    St = torch.diag(S[:t])
+    Vt = V[:, :t]
+    
+    # Construct matrix A and B
+    A = Ut @ torch.sqrt(St)
+    B = torch.sqrt(St) @ Vt.t()
+    return A, B
+  
+
+def notears_linear(X,wandb, t, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
     """Solve min_W L(W; X) + lambda1 ‖W‖_1 s.t. h(W) = 0 using augmented Lagrangian.
 
     Args:
@@ -60,7 +100,13 @@ def notears_linear(X,wandb, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_ma
     @benchmark_me()
     def _h(W):
         """Evaluate value and gradient of acyclicity constraint."""
-        E = slin.expm(W * W)  # (Zheng et al. 2018)
+        # Factorization W into A1 and A2 
+        ## Matrix Factorization
+        A, B = matrix_factorization(W * W, t)
+        E = cal_expm(A, B, I)
+        ## Non-negative Matrix Factorization 
+        
+        # E = slin.expm(W * W)  # (Zheng et al. 2018)
         h = np.trace(E) - d
         #     # A different formulation, slightly faster at the cost of numerical stability
         #     M = np.eye(d) + W * W / d  # (Yu et al. 2019)
@@ -86,6 +132,7 @@ def notears_linear(X,wandb, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_ma
         return obj, g_obj
 
     n, d = X.shape
+    I = torch.eye(d, dtype=torch.double)
     w_est, rho, alpha, h = np.zeros(2 * d * d), 1.0, 0.0, np.inf  # double w_est into (w_pos, w_neg)
     bnds = [(0, 0) if i == j else (0, None) for _ in range(2) for i in range(d) for j in range(d)]
     if loss_type == 'l2':
@@ -111,16 +158,14 @@ def notears_linear(X,wandb, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_ma
     W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
 
-
 def main(args):
     # utils.set_random_seed(1)
-    cfg = f'cfg_{str(args.cfg)}'
-    out_folder = f"{args.root_path}{cfg}/linear/"
+    out_folder = f"{args.root_path}/linear/"
     n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions, 'ER', 'gauss'
-    
+    t = 20
     wandb.init(
-        project="linear_notear",
-        name=f"linear_notea_{cfg}",
+        project="scale_notear",
+        name=f"linear_exp_flow",
         config={
         "samples": n,
         "dimension": d,},
@@ -135,7 +180,7 @@ def main(args):
     np.savetxt(out_folder +'X.csv', X, delimiter=',')
     
     start = time.time() 
-    W_est = notears_linear(X, wandb, lambda1=0.1, loss_type='l2')
+    W_est = notears_linear(X, wandb, t, lambda1=0.1, loss_type='l2')
     end = time.time()
     print("The time of execution of above program is :",
       (end-start) * 10**3, "ms")
@@ -149,11 +194,8 @@ def arg_parser():
     parser = argparse.ArgumentParser()
     # path
     parser.add_argument("--root_path", 
-                        default="/workspace/tripx/MCS/xai_causality/run/run_v7/", 
+                        default="/workspace/tripx/MCS/xai_causality/run/run_v9", 
                         type=str)
-    parser.add_argument("--cfg", 
-                        default=0, 
-                        type=int)
     parser.add_argument("--samples", 
                         default=500, 
                         type=int)
