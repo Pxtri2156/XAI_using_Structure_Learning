@@ -18,6 +18,7 @@ class NotearsMLP(nn.Module):
         super(NotearsMLP, self).__init__()
         assert len(dims) >= 2
         assert dims[-1] == 1
+        
         d = dims[0]
         self.dims = dims
         # fc1: variable splitting for l1
