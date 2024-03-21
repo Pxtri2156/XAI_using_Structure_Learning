@@ -1,0 +1,9 @@
+STT,Feature,CEM,NAM,Shapley_SVM
+0,MedInc,1.0,0.022,0.11
+1,HouseAge,1.0,0.02,0.01
+2,AveRooms,0.5,0.008,0.0
+3,AveBedrms,1.0,0.005,0.0
+4,Population,0.5,0.005,0.01
+5,AveOccup,0.00,0.005,0.0
+6,Latitude,1.0,0.11,0.02
+7,Longitude,1.0,0.068,0.02
