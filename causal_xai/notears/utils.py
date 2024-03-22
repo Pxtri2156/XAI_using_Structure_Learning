@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.special import expit as sigmoid
 import igraph as ig
 import random
+import torch
 import networkx as nx 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -456,3 +457,40 @@ def get_contribution(adjacency_matrix):
             contribution_values=0 
         contribution_dic[str(start_node)] = contribution_values
     return contribution_dic
+
+def matrix_factorization_svd(W, t):
+    # Perform SVD on matrix W
+    U, S, V = torch.svd(W)
+    
+    # Take the first t singular values and vectors
+    Ut = U[:, :t]
+    St = torch.diag(S[:t])
+    Vt = V[:, :t]
+    
+    # Construct matrix A and B
+    A = Ut @ torch.sqrt(St)
+    B = torch.sqrt(St) @ Vt.t()
+    return A, B
+
+def series(x, eps = 1e-8):
+    """
+    compute the matrix series: \sum_{k=0}^{\infty}\frac{x^{k}}{(k+1)!}
+    """
+    s = torch.eye(x.size(-1), dtype=torch.double,  device=x.device)
+    t = x / 2
+    k = 3
+    while torch.norm(t, p=1, dim=-1).max().item() > eps:
+        s = s + t
+        t = torch.matmul(x, t) / k
+        k = k + 1
+    return s
+
+def cal_expm(A, B, I):
+    """
+    Compute the expm of W, W=A.B based on A, B
+    """
+    V = B.matmul(A)
+    series_V = series(V)
+    expm_W = I + (A.matmul(series_V)).matmul(B)
+    # expm_W = expm_W.numpy()
+    return expm_W

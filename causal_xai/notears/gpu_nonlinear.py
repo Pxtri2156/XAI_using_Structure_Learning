@@ -139,17 +139,6 @@ def dual_ascent_step(model, X, device, lambda1, lambda2, rho, alpha, h, rho_max)
             primal_obj.backward()
             return primal_obj
         optimizer.step(closure)  # NOTE: updates model in-place
-        # # Set constraint 
-        # for name, param in model.named_parameters():
-        #     if "fc1" in name and "weight" in name:
-        #         param.data.clamp_(0, None)
-        #         start_idx = 0
-        #         # print('Before: ', name, param.data)
-        #         for k in range(model.dims[0]):
-        #             end_indx = start_idx + model.dims[1]
-        #             # print("Blocks " + str(k), param[start_idx:end_indx,k])
-        #             param[start_idx:end_indx,k].data.clamp_(0, 0)
-        #             start_idx=end_indx
         with torch.no_grad():          
             h_new = model.h_func().item()
         if h_new > 0.25 * h:
@@ -192,23 +181,20 @@ def main():
     ut.set_random_seed(123)
     device = torch.device("cuda")
 
-    # n, d, s0, graph_type, sem_type = 200, 100, 50, 'ER', 'mim'
-    # B_true = ut.simulate_dag(d, s0, graph_type)
-    X = pd.read_csv(data_path, header=None)
-    X = X.to_numpy().astype(float)
-    d = X.shape[1]
+    n, d, s0, graph_type, sem_type = 200, 20, 50, 'ER', 'mim'
+    B_true = ut.simulate_dag(d, s0, graph_type)
+    # X = pd.read_csv(data_path, header=None)
+    # X = X.to_numpy().astype(float)
     print("d: ", d)
-    print("Shape X: ", X.shape)
-    B_true = pd.read_csv(gt_path, header=None)
-    B_true = B_true.to_numpy().astype(float)
+    # B_true = pd.read_csv(gt_path, header=None)
+    # B_true = B_true.to_numpy().astype(float)
     # print("B_true: ", B_true)
-    print("Shape B_true : ", B_true.shape)
     np.savetxt(out_path + 'W_true.csv', B_true, delimiter=',')
 
-    # X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
-    
+    X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
+    d = X.shape[1]
+
     # print("type X: ", type(X))
-    
     np.savetxt(out_path + 'X.csv', X, delimiter=',')
 
     model = NotearsMLP(dims=[d, 100, 1], bias=True)

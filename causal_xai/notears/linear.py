@@ -155,7 +155,7 @@ def arg_parser():
                         default=0, 
                         type=int)
     parser.add_argument("--samples", 
-                        default=500, 
+                        default=200, 
                         type=int)
     parser.add_argument("--dimensions", 
                         default=50, 

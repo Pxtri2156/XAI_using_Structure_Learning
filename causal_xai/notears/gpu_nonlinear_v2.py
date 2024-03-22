@@ -11,16 +11,17 @@ import numpy as np
 import math
 import pandas as pd
 import time
-from causal_xai.notears.pytorch_minimize.pytorch_minimize.optim import MinimizeWrapper
-# from pytorch_minimize.optim import MinimizeWrapper
+# from causal_xai.notears.pytorch_minimize.pytorch_minimize.optim import MinimizeWrapper
+from pytorch_minimize.optim import MinimizeWrapper
 
 class NotearsMLP(nn.Module):
-    def __init__(self, dims, bias=True):
+    def __init__(self, K, dims, bias=True):
         super(NotearsMLP, self).__init__()
         assert len(dims) >= 2
         assert dims[-1] == 1
         d = dims[0]
         self.dims = dims
+        self.K = K
         # fc1: variable splitting for l1
         self.fc1_pos = nn.Linear(d, d * dims[1], bias=bias)
         self.fc1_neg = nn.Linear(d, d * dims[1], bias=bias)
@@ -61,7 +62,7 @@ class NotearsMLP(nn.Module):
         fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j * m1, i]
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
-        h = trace_expm(A) - d  # (Zheng et al. 2018)
+        h = trace_expm_gpu(A) - d  # (Zheng et al. 2018)
         # A different formulation, slightly faster at the cost of numerical stability
         # M = torch.eye(d) + A / d  # (Yu et al. 2019)
         # E = torch.matrix_power(M, d - 1)
@@ -139,17 +140,6 @@ def dual_ascent_step(model, X, device, lambda1, lambda2, rho, alpha, h, rho_max)
             primal_obj.backward()
             return primal_obj
         optimizer.step(closure)  # NOTE: updates model in-place
-        # # Set constraint 
-        # for name, param in model.named_parameters():
-        #     if "fc1" in name and "weight" in name:
-        #         param.data.clamp_(0, None)
-        #         start_idx = 0
-        #         # print('Before: ', name, param.data)
-        #         for k in range(model.dims[0]):
-        #             end_indx = start_idx + model.dims[1]
-        #             # print("Blocks " + str(k), param[start_idx:end_indx,k])
-        #             param[start_idx:end_indx,k].data.clamp_(0, 0)
-        #             start_idx=end_indx
         with torch.no_grad():          
             h_new = model.h_func().item()
         if h_new > 0.25 * h:
@@ -183,7 +173,7 @@ def notears_nonlinear(model: nn.Module,
 def main():
     # data_path="/dataset/DREAM5/X_B_true/X_1.csv"
     # gt_path="/dataset/DREAM5/X_B_true/B_true_1.csv"
-    out_path="/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/run/genie/"
+    out_path="/workspace/tripx/MCS/xai_causality/run/run_v9/"
     
     torch.set_default_dtype(torch.double)
     np.set_printoptions(precision=3)
@@ -192,27 +182,19 @@ def main():
     ut.set_random_seed(123)
     device = torch.device("cuda")
 
-    n, d, s0, graph_type, sem_type = 200, 100, 50, 'ER', 'mim'
+    n, d, s0, graph_type, sem_type = 200, 20, 50, 'ER', 'mim'
+    K = 10
     B_true = ut.simulate_dag(d, s0, graph_type)
-    # X = pd.read_csv(data_path, header=None)
-    # X = X.to_numpy().astype(float)
-    # d = X.shape[1]
-    # print("d: ", d)
-    # print("Shape X: ", X.shape)
-    # B_true = pd.read_csv(gt_path, header=None)
-    # B_true = B_true.to_numpy().astype(float)
-    # print("B_true: ", B_true)
-    # print("Shape B_true : ", B_true.shape)
-    # np.savetxt(out_path + 'W_true.csv', B_true, delimiter=',')
 
     X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
-    
-    print("type X: ", type(X))
-    
     np.savetxt(out_path + 'X.csv', X, delimiter=',')
 
-    model = NotearsMLP(dims=[d, 10, 1], bias=True)
+    model = NotearsMLP(K, dims=[d, 10, 1], bias=True)
+    start = time.time() 
     W_est = notears_nonlinear(model, X, device, lambda1=0.01, lambda2=0.01)
+    end = time.time()
+    print("The time of execution of above program is :",
+      (end-start) * 10**3, "ms")
     assert ut.is_dag(W_est)
     W_est_numpy = W_est.cpu().numpy()
     np.savetxt(out_path + 'W_est.csv', W_est_numpy, delimiter=',')
@@ -220,4 +202,5 @@ def main():
     print(acc)
 
 if __name__ == '__main__':
+    
     main()
