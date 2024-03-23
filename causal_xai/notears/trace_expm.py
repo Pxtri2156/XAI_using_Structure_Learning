@@ -1,8 +1,12 @@
 import torch
 import numpy as np
 import scipy.linalg as slin
+import notears.utils as ut
+
 torch.set_printoptions(precision=3)
-class TraceExpm_numpy(torch.autograd.Function):
+
+K=5
+class TraceExpm(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):
         # detach so we can cast to NumPy
@@ -18,11 +22,15 @@ class TraceExpm_numpy(torch.autograd.Function):
         grad_input = grad_output * E.t()
         return grad_input
 
-class TraceExpm(torch.autograd.Function):
+class TraceExpmGPU(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):
         # detach so we can cast to NumPy
-        E = torch.linalg.matrix_exp(input) 
+        I = torch.eye(input.shape[0], dtype=torch.double, device=input.device) # need to improve
+        A, B = ut.matrix_factorization_svd(input, K)
+        E = ut.cal_expm(A, B, I)
+
+        # E = torch.linalg.matrix_exp(input) 
         f = torch.sum(torch.diagonal(E))
         ctx.save_for_backward(E)
         return torch.as_tensor(f, dtype=input.dtype)
@@ -33,8 +41,8 @@ class TraceExpm(torch.autograd.Function):
         grad_input = grad_output * E.t()
         return grad_input
 
-
 trace_expm = TraceExpm.apply
+trace_expm_gpu = TraceExpmGPU.apply
 
 
 def main():

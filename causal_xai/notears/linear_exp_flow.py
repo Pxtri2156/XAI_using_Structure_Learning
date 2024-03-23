@@ -10,7 +10,57 @@ import scipy.optimize as sopt
 from scipy.special import expit as sigmoid
 from notears import utils
 import time
+import sympy as sp
+
 eps = 1e-8
+
+def non_pivot_columns_indices(matrix):
+    zero_diag_columns = []
+    for i in range(matrix.shape[0]):
+        if matrix[i, i] == 0:
+            zero_diag_columns.append(i)
+    return zero_diag_columns
+
+def matrix_factorization_binh(W):
+    print("Call binh")
+    #-----------------------------------------------
+    # FIND REDUCED ROW ECHELON FORM
+    # Convert the numpy array to sympy matrix
+    sympy_matrix = sp.Matrix(W)
+
+    # Compute the reduced row echelon form
+    rref_matrix = sympy_matrix.rref()[0]
+
+    # Convert the resulting sympy matrix back to numpy array
+    B = np.array(rref_matrix).astype(np.float64)
+
+    #-----------------------------------------------
+    # FIND TRUTHLY POVIT COLUMNS
+    # Find non povit columns
+    non_povit_columns = np.array(non_pivot_columns_indices(B))
+
+    #Find row with whole values are zeros
+    zero_rows = np.where(~np.any(B != 0, axis=1))[0]
+
+    # Create a boolean mask for elements to keep
+    mask = np.isin(non_povit_columns, zero_rows, invert=True)
+
+    # Apply the mask to the original array to filter out elements
+    non_povit_columns = non_povit_columns[mask]
+
+    #-----------------------------------------------
+    # FIND SUB MATRIX
+    C = W[:, ~np.isin(np.arange(W.shape[1]), non_povit_columns)]
+
+    non_zero_rows = np.any(B != 0, axis=1)
+    F = B[non_zero_rows]
+    if W.all() == (C @ F).all():
+        print("Successfully factorized!")
+    else:
+        print("Error!")
+    C = torch.tensor(C)
+    F = torch.tensor(F)
+    return C, F
 
 def benchmark_me():
     def decorator(function):
@@ -48,6 +98,7 @@ def cal_expm(A, B, I):
     return expm_W
     
 def matrix_factorization(W, t):
+    print("call Trip")
     # Perform SVD on matrix W
     W = torch.from_numpy(W)
     U, S, V = torch.svd(W)
@@ -102,7 +153,11 @@ def notears_linear(X,wandb, t, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho
         """Evaluate value and gradient of acyclicity constraint."""
         # Factorization W into A1 and A2 
         ## Matrix Factorization
-        A, B = matrix_factorization(W * W, t)
+        # A, B = matrix_factorization(W * W, t)
+        try:
+            A, B = matrix_factorization_binh(W * W)
+        except:
+            A, B = matrix_factorization(W * W, t)
         E = cal_expm(A, B, I)
         ## Non-negative Matrix Factorization 
         
@@ -162,7 +217,7 @@ def main(args):
     # utils.set_random_seed(1)
     out_folder = f"{args.root_path}/linear/"
     n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions, 'ER', 'gauss'
-    t = 20
+    t = 30
     wandb.init(
         project="scale_notear",
         name=f"linear_exp_flow",
@@ -197,7 +252,7 @@ def arg_parser():
                         default="/workspace/tripx/MCS/xai_causality/run/run_v9", 
                         type=str)
     parser.add_argument("--samples", 
-                        default=500, 
+                        default=200, 
                         type=int)
     parser.add_argument("--dimensions", 
                         default=50, 

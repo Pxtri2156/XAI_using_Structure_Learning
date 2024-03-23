@@ -233,7 +233,7 @@ def main(args):
             mode=args.wandb_mode)
 
         # Read and process data
-c        print("X: ", X)
+        print("X: ", X)
         d = X.shape[1]
         
         # Modeling
