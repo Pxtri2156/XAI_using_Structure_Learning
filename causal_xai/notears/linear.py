@@ -9,19 +9,10 @@ import scipy.linalg as slin
 import scipy.optimize as sopt
 from scipy.special import expit as sigmoid
 from notears import utils
+from notears.utils import benchmark_me
 import time
 
-def benchmark_me():
-    def decorator(function):
-        def wraps(*args, **kwargs):
-            start = time.time()
-            result = function(*args, **kwargs)
-            end = time.time()
-            # print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
-            wandb.log({function.__name__:(end - start) *10**3})
-            return result
-        return wraps
-    return decorator
+
 
 def notears_linear(X,wandb, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
     """Solve min_W L(W; X) + lambda1 ‖W‖_1 s.t. h(W) = 0 using augmented Lagrangian.
@@ -116,7 +107,7 @@ def main(args):
     # utils.set_random_seed(1)
     cfg = f'cfg_{str(args.cfg)}'
     out_folder = f"{args.root_path}{cfg}/linear/"
-    n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions, 'ER', 'gauss'
+    n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions -5, 'ER', 'gauss'
     
     wandb.init(
         project="linear_notear",
@@ -155,10 +146,10 @@ def arg_parser():
                         default=0, 
                         type=int)
     parser.add_argument("--samples", 
-                        default=200, 
+                        default=100, 
                         type=int)
     parser.add_argument("--dimensions", 
-                        default=50, 
+                        default=20, 
                         type=int)
     parser.add_argument("--wandb_mode", 
                         default="disabled", 

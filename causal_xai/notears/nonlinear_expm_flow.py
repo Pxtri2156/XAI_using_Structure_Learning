@@ -1,9 +1,7 @@
 import  sys
 sys.path.append("./")
 from notears.locally_connected import LocallyConnected
-# from notears.lbfgsb_scipy import LBFGSBScipy
-# from notears.lbfgsb_gpu import LBFGSBGPU
-
+from notears.lbfgsb_scipy import LBFGSBScipy
 from notears.trace_expm import trace_expm, trace_expm_gpu
 import torch
 import torch.nn as nn
@@ -11,17 +9,14 @@ import numpy as np
 import math
 import pandas as pd
 import time
-# from causal_xai.notears.pytorch_minimize.pytorch_minimize.optim import MinimizeWrapper
-from pytorch_minimize.optim import MinimizeWrapper
 
 class NotearsMLP(nn.Module):
-    def __init__(self, K, dims, bias=True):
+    def __init__(self, dims, bias=True):
         super(NotearsMLP, self).__init__()
         assert len(dims) >= 2
         assert dims[-1] == 1
         d = dims[0]
         self.dims = dims
-        self.K = K
         # fc1: variable splitting for l1
         self.fc1_pos = nn.Linear(d, d * dims[1], bias=bias)
         self.fc1_neg = nn.Linear(d, d * dims[1], bias=bias)
@@ -46,7 +41,7 @@ class NotearsMLP(nn.Module):
                     bounds.append(bound)
         # constraint y=0 (chú ý số chiều)
         return bounds
- 
+
     def forward(self, x):  # [n, d] -> [n, d]
         x = self.fc1_pos(x) - self.fc1_neg(x)  # [n, d * m1]
         x = x.view(-1, self.dims[0], self.dims[1])  # [n, d, m1]
@@ -62,7 +57,8 @@ class NotearsMLP(nn.Module):
         fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j * m1, i]
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
-        h = trace_expm_gpu(A) - d  # (Zheng et al. 2018)
+        # h = trace_expm(A) - d  # (Zheng et al. 2018)
+        h = trace_expm_gpu(A) - d
         # A different formulation, slightly faster at the cost of numerical stability
         # M = torch.eye(d) + A / d  # (Yu et al. 2019)
         # E = torch.matrix_power(M, d - 1)
@@ -91,40 +87,20 @@ class NotearsMLP(nn.Module):
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
         W = torch.sqrt(A)  # [i, j]
-        W = W  # [i, j]
+        W = W.cpu().detach().numpy()  # [i, j]
         return W
-    
-def gather_flat_bounds(model):
-    bounds = []
-    for p in model.parameters():
-        if hasattr(p, 'bounds'):
-            b = p.bounds
-        else:
-            b = [(None, None)] * p.numel()
-        bounds += b
-    
-    return bounds
 
 def squared_loss(output, target):
     # Use weight
-    # Loss = causal(X:1->d) + Lambda*classification (y = f_c(X))
-    # Lambda > 1: focus classification
     n = target.shape[0]
     loss = 0.5 / n * torch.sum((output - target) ** 2)
     return loss
 
-def dual_ascent_step(model, X, device, lambda1, lambda2, rho, alpha, h, rho_max):
+def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
     """Perform one step of dual ascent in augmented Lagrangian."""
     h_new = None
-    model.to(device)
-    flat_bounds = gather_flat_bounds(model)
-    minimizer_args = dict(method='L-BFGS-B', jac=True, bounds=flat_bounds, options={'disp':True, 'maxiter':100})
-    optimizer = MinimizeWrapper(model.parameters(), minimizer_args)
-    
-    # optimizer = LBFGSBGPU(model.parameters())
-    # optimizer = torch.optim.LBFGS(model.parameters())
+    optimizer = LBFGSBScipy(model.parameters())
     X_torch = torch.from_numpy(X)
-    X_torch = X_torch.to(device)
     while rho < rho_max:
         def closure():
             optimizer.zero_grad()
@@ -138,7 +114,7 @@ def dual_ascent_step(model, X, device, lambda1, lambda2, rho, alpha, h, rho_max)
             primal_obj.backward()
             return primal_obj
         optimizer.step(closure)  # NOTE: updates model in-place
-        with torch.no_grad():          
+        with torch.no_grad():
             h_new = model.h_func().item()
         if h_new > 0.25 * h:
             rho *= 10
@@ -147,10 +123,8 @@ def dual_ascent_step(model, X, device, lambda1, lambda2, rho, alpha, h, rho_max)
     alpha += rho * h_new
     return rho, alpha, h_new
 
-
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
-                      device,
                       lambda1: float = 0.,
                       lambda2: float = 0.,
                       max_iter: int = 100,
@@ -159,46 +133,42 @@ def notears_nonlinear(model: nn.Module,
                       w_threshold: float = 0.3):
     rho, alpha, h = 1.0, 0.0, np.inf
     for _ in range(max_iter):
-        rho, alpha, h = dual_ascent_step(model, X, device, lambda1, lambda2,
+        rho, alpha, h = dual_ascent_step(model, X, lambda1, lambda2,
                                          rho, alpha, h, rho_max)
         if h <= h_tol or rho >= rho_max:
             break
+        
     print("h: ", h)
     W_est = model.fc1_to_adj()
-    W_est = torch.where(torch.abs(W_est) < w_threshold, torch.tensor(0.0), W_est)
+    W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
 
 def main():
-    # data_path="/dataset/DREAM5/X_B_true/X_1.csv"
-    # gt_path="/dataset/DREAM5/X_B_true/B_true_1.csv"
-    out_path="/workspace/tripx/MCS/xai_causality/run/run_v9/"
-    
     torch.set_default_dtype(torch.double)
     np.set_printoptions(precision=3)
 
     import notears.utils as ut
     ut.set_random_seed(123)
-    device = torch.device("cuda")
 
     n, d, s0, graph_type, sem_type = 200, 50, 40, 'ER', 'mim'
-    K = 30
     B_true = ut.simulate_dag(d, s0, graph_type)
+    np.savetxt('W_true.csv', B_true, delimiter=',')
 
     X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
-    np.savetxt(out_path + 'X.csv', X, delimiter=',')
+    
+    np.savetxt('X.csv', X, delimiter=',')
+    start_time = time.time()
 
-    model = NotearsMLP(K, dims=[d, 10, 1], bias=True)
-    start = time.time() 
-    W_est = notears_nonlinear(model, X, device, lambda1=0.01, lambda2=0.01)
-    end = time.time()
+    model = NotearsMLP(dims=[d, 10, 1], bias=True)
+    W_est = notears_nonlinear(model, X, lambda1=0.01, lambda2=0.01)
+    end_time = time.time()
     print("The time of execution of above program is :",
-      (end-start) * 10**3, "ms")
+      (end_time-start_time) * 10**3, "ms")
     assert ut.is_dag(W_est)
-    W_est_numpy = W_est.cpu().numpy()
-    np.savetxt(out_path + 'W_est.csv', W_est_numpy, delimiter=',')
-    acc = ut.count_accuracy(B_true, W_est_numpy != 0)
+    np.savetxt('W_est.csv', W_est, delimiter=',')
+    acc = ut.count_accuracy(B_true, W_est != 0)
     print(acc)
 
+
 if __name__ == '__main__':
-    
     main()

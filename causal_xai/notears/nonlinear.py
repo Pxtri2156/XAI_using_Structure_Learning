@@ -219,30 +219,26 @@ def main():
     import notears.utils as ut
     ut.set_random_seed(123)
 
-    n, d, s0, graph_type, sem_type = 200,5, 9, 'ER', 'mim'
+    n, d, s0, graph_type, sem_type = 200, 50, 40, 'ER', 'mim'
     B_true = ut.simulate_dag(d, s0, graph_type)
     np.savetxt('W_true.csv', B_true, delimiter=',')
 
     X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
     
-    # data_path = "/workspace/tripx/MCS/xai_causality/dataset/breast_cancer_uci.csv"
-    # X = pd.read_csv(data_path)
-    # X = X.to_numpy()
-    # print("X: ", X.shape)
-    # d = X.shape[1]
-    # print("d: ", d)
     print("type X: ", type(X))
     np.savetxt('X.csv', X, delimiter=',')
+    start_time = time.time()
 
     model = NotearsMLP(dims=[d, 10, 1], bias=True)
     W_est = notears_nonlinear(model, X, lambda1=0.01, lambda2=0.01)
+    end_time = time.time()
+    print("The time of execution of above program is :",
+      (end_time-start_time) * 10**3, "ms")
     assert ut.is_dag(W_est)
     np.savetxt('W_est.csv', W_est, delimiter=',')
-    # acc = ut.count_accuracy(B_true, W_est != 0)
-    # print(acc)
+    acc = ut.count_accuracy(B_true, W_est != 0)
+    print(acc)
 
 
 if __name__ == '__main__':
-    start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time() - start_time))

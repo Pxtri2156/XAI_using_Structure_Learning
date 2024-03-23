@@ -5,7 +5,7 @@ import notears.utils as ut
 
 torch.set_printoptions(precision=3)
 
-K=5
+K=10
 class TraceExpm(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input):

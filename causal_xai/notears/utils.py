@@ -11,6 +11,7 @@ import os
 from tqdm import tqdm 
 from sklearn.inspection import PartialDependenceDisplay, partial_dependence
 from collections import deque
+import time
 
 def set_random_seed(seed):
     random.seed(seed)
@@ -494,3 +495,15 @@ def cal_expm(A, B, I):
     expm_W = I + (A.matmul(series_V)).matmul(B)
     # expm_W = expm_W.numpy()
     return expm_W
+
+def benchmark_me():
+    def decorator(function):
+        def wraps(*args, **kwargs):
+            start = time.time()
+            result = function(*args, **kwargs)
+            end = time.time()
+            print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
+            # wandb.log({function.__name__:(end - start) *10**3})
+            return result
+        return wraps
+    return decorator

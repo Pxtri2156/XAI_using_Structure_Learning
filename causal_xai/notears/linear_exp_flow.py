@@ -22,7 +22,6 @@ def non_pivot_columns_indices(matrix):
     return zero_diag_columns
 
 def matrix_factorization_binh(W):
-    print("Call binh")
     #-----------------------------------------------
     # FIND REDUCED ROW ECHELON FORM
     # Convert the numpy array to sympy matrix
@@ -68,7 +67,7 @@ def benchmark_me():
             start = time.time()
             result = function(*args, **kwargs)
             end = time.time()
-            # print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
+            print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
             wandb.log({function.__name__:(end - start) *10**3})
             return result
         return wraps
@@ -98,7 +97,6 @@ def cal_expm(A, B, I):
     return expm_W
     
 def matrix_factorization(W, t):
-    print("call Trip")
     # Perform SVD on matrix W
     W = torch.from_numpy(W)
     U, S, V = torch.svd(W)
@@ -113,7 +111,6 @@ def matrix_factorization(W, t):
     B = torch.sqrt(St) @ Vt.t()
     return A, B
   
-
 def notears_linear(X,wandb, t, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho_max=1e+16, w_threshold=0.3):
     """Solve min_W L(W; X) + lambda1 ‖W‖_1 s.t. h(W) = 0 using augmented Lagrangian.
 
@@ -158,6 +155,7 @@ def notears_linear(X,wandb, t, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho
             A, B = matrix_factorization_binh(W * W)
         except:
             A, B = matrix_factorization(W * W, t)
+        # A, B = matrix_factorization(W * W, t)
         E = cal_expm(A, B, I)
         ## Non-negative Matrix Factorization 
         
@@ -216,8 +214,8 @@ def notears_linear(X,wandb, t, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho
 def main(args):
     # utils.set_random_seed(1)
     out_folder = f"{args.root_path}/linear/"
-    n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions, 'ER', 'gauss'
-    t = 30
+    n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.dimensions - 5, 'ER', 'gauss'
+    t = 10
     wandb.init(
         project="scale_notear",
         name=f"linear_exp_flow",
@@ -252,10 +250,10 @@ def arg_parser():
                         default="/workspace/tripx/MCS/xai_causality/run/run_v9", 
                         type=str)
     parser.add_argument("--samples", 
-                        default=200, 
+                        default=100, 
                         type=int)
     parser.add_argument("--dimensions", 
-                        default=50, 
+                        default=20, 
                         type=int)
     parser.add_argument("--wandb_mode", 
                         default="disabled", 
