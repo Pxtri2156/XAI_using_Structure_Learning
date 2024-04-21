@@ -1,0 +1,50 @@
+wandb_version: 1
+
+name:
+  desc: null
+  value: seed_8
+dataset:
+  desc: null
+  value: boston_housing_v2
+lambda1:
+  desc: null
+  value: 0.0004
+lambda2:
+  desc: null
+  value: 0.0005
+lambda_reg:
+  desc: null
+  value: 3.0
+ratio_test:
+  desc: null
+  value: 0.2
+_wandb:
+  desc: null
+  value:
+    python_version: 3.11.4
+    cli_version: 0.15.8
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: true
+    start_time: 1713342443.646004
+    t:
+      1:
+      - 1
+      - 5
+      - 53
+      - 55
+      2:
+      - 1
+      - 5
+      - 53
+      - 55
+      3:
+      - 2
+      - 13
+      - 16
+      - 23
+      4: 3.11.4
+      5: 0.15.8
+      8:
+      - 2
+      - 5
