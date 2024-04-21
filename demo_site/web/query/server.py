@@ -13,8 +13,10 @@ sys.path.append("./")
 app = Flask(__name__)
 # app.debug = True
 
-UPLOAD_FOLDER = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/datasets/uploaded_datasets/'
+UPLOAD_FOLDER = '/workspace/tripx/MCS/xai_causality/demo_site/datasets/uploaded_datasets/'
 ALLOWED_EXTENSIONS = {'csv'}
+white_img = "/workspace/tripx/MCS/xai_causality/demo_site/web/query/templates/assests/white.png"
+graphsicon="/workspace/tripx/MCS/xai_causality/demo_site/web/query/templates/assests/graph.png"
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -74,25 +76,28 @@ def index():
         matrix_icon = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/matrix.png'
         predict_icon = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/network.png'
         
-        reg_graph ='/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/reg/avg_seed/vis_avg_dag_graph_boston_housing_v2.png'
-        reg_matrix = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/reg/avg_seed/mean_dag_array_boston_housing_v2.png'
-        reg_perform = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/reg/evaluation.png'
+        reg_graph ='/workspace/tripx/MCS/xai_causality/run/demo/reg/avg_seed/vis_avg_dag_graph_boston_housing_v2.png'
+        reg_matrix = '/workspace/tripx/MCS/xai_causality/run/demo/reg/avg_seed/mean_dag_array_boston_housing_v2.png'
+        reg_perform = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/reg/evaluation.png'
 
-        cls_graph = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/cls/avg_seed/vis_avg_dag_graph_laml_cancer.png'
-        cls_matrix = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/cls/avg_seed/mean_dag_array_laml_cancer.png'
-        cls_perform = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/cls/evaluation.png'
+        cls_graph = '/workspace/tripx/MCS/xai_causality/run/demo/cls/avg_seed/vis_avg_dag_graph_laml_cancer.png'
+        cls_matrix = '/workspace/tripx/MCS/xai_causality/run/demo/cls/avg_seed/mean_dag_array_laml_cancer.png'
+        cls_perform = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/cls/evaluation.png'
 
-        top1 = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/uploaded_datasets/top1.png'
-        top2 = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/uploaded_datasets/top2.png'
-        top3 = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/uploaded_datasets/top3.png'
+        top1 = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/uploaded_datasets/top1.png'
+        top2 = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/uploaded_datasets/top2.png'
+        top3 = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/uploaded_datasets/top3.png'
 
         
         if type_problem == 'cls': 
             upload_graph = cls_graph
             upload_matrix = cls_matrix
+            top1 = white_img
+            top2 = white_img
+            top3 = white_img
         else: 
             upload_graph = reg_graph
-            upload_matrix = cls_matrix
+            upload_matrix = reg_matrix
         upload_perform = upload_result[1]
 
         return render_template('index.html',    logo_image=logo, 
@@ -117,7 +122,8 @@ def index():
                                                 upload_perform=upload_perform, 
                                                 top1=top1, 
                                                 top2=top2, 
-                                                top3=top3)
+                                                top3=top3,
+                                                graphsicon=graphsicon)
     else:
         status_file = 'There is no file has been uploaded.'
         logo = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/logo.png'
@@ -134,17 +140,17 @@ def index():
         predict_icon = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/network.png'
         feature_icon = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/feature.png'
 
-        reg_graph ='/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/reg/avg_seed/vis_avg_dag_graph_boston_housing_v2.png'
-        reg_matrix = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/reg/avg_seed/mean_dag_array_boston_housing_v2.png'
-        reg_perform = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/reg/evaluation.png'
+        reg_graph ='/workspace/tripx/MCS/xai_causality/run/demo/reg/avg_seed/vis_avg_dag_graph_boston_housing_v2.png'
+        reg_matrix = '/workspace/tripx/MCS/xai_causality/run/demo/reg/avg_seed/mean_dag_array_boston_housing_v2.png'
+        reg_perform = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/reg/evaluation.png'
 
-        cls_graph = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/cls/avg_seed/vis_avg_dag_graph_laml_cancer.png'
-        cls_matrix = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/run/cls/avg_seed/mean_dag_array_laml_cancer.png'
-        cls_perform = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/graphs/cls/evaluation.png'
+        cls_graph = '/workspace/tripx/MCS/xai_causality/run/demo/cls/avg_seed/vis_avg_dag_graph_laml_cancer.png'
+        cls_matrix = '/workspace/tripx/MCS/xai_causality/run/demo/cls/avg_seed/mean_dag_array_laml_cancer.png'
+        cls_perform = '/workspace/tripx/MCS/xai_causality/demo_site/graphs/cls/evaluation.png'
         
-        upload_graph = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/white.png'
-        upload_matrix = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/white.png'
-        upload_perform = '/workspace/binhtlh/projects/causality/XAI_using_Structure_Learning/demo_site/web/query/templates/assests/white.png'
+        upload_graph = '/workspace/tripx/MCS/xai_causality/demo_site/web/query/templates/assests/white.png'
+        upload_matrix = '/workspace/tripx/MCS/xai_causality/demo_site/web/query/templates/assests/white.png'
+        upload_perform = '/workspace/tripx/MCS/xai_causality/demo_site/web/query/templates/assests/white.png'
         return render_template('index.html',    logo_image=logo, 
                                                 home_image=home, 
                                                 cali_icon=cali_icon,
@@ -167,7 +173,8 @@ def index():
                                                 upload_perform=upload_perform, 
                                                 top1=upload_perform,
                                                 top2=upload_perform,
-                                                top3=upload_perform)
+                                                top3=upload_perform,
+                                                graphsicon=graphsicon)
     
 
 if __name__ == "__main__":

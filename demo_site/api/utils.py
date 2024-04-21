@@ -4,6 +4,8 @@ import torch
 import numpy as np
 import random
 import os
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 laml_labels = {0:'0:ASXL1',1:'1:DNMT3A',2:'2:FLT3',3:'3:IDH1',4:'4:IDH2',5:'5:KIT',
                 6:'6:KRAS',7:'7:NPM1',8:'8:PTPDC1',9:'9:PTPN11',10:'10:RUNX1',11:'11:SF3B1',
@@ -67,39 +69,21 @@ def delete_files_with_format(folder_path, format_string):
     plt.close()
 
 def plot_classification_results(cls_predict, target, save_path=None):
-    """
-    Plot classification results.
+    cm = confusion_matrix(target, cls_predict)
 
-    Args:
-    cls_predict (list): List of predicted values.
-    target (list): List of target values.
-    save_path (str, optional): Path to save the plot image. Default is None.
-    """
-    plt.figure(figsize=(8, 6))  # Set the figure size
-
-    # Plot cls_predict values
-    for i, val in enumerate(cls_predict):
-        marker = 'o' if val == 0 else '^'  # Circle for 0, triangle for 1
-        plt.scatter(i, val, color='#AFEEEE', marker=marker, s=100, label='Predict' if i == 0 else None)
-
-    # Plot target values
-    for i, val in enumerate(target):
-        marker = 'o' if val == 0 else '^'  # Circle for 0, triangle for 1
-        plt.scatter(i, val, color='#FFA07A', marker=marker, s=100, label='Target' if i == 0 else None, alpha=0.7)  # Pastel blue
-
-    plt.title('Predicted vs. Target')  # Set the title
-    plt.xlabel('Sample')  # Set the x-axis label
-    plt.ylabel('Value')  # Set the y-axis label
-    plt.legend()  # Show legend
-    plt.grid(True)  # Show grid
-    
+    # Vẽ Confusion Matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
     if save_path:
         plt.savefig(save_path)  # Save the plot image
+    plt.close()
 
 def plot_regression_results(reg_predict, target, save_path=None):
     """
     Plot regression results.
-
     Args:
     predicted (list): List of predicted values.
     target (list): List of target values.
@@ -125,6 +109,21 @@ def plot_regression_results(reg_predict, target, save_path=None):
     # plt.show()  # Show plot
     plt.close()
 
+
+def plot_regres_results(pred, tar, save_path=None):
+    # Vẽ Scatter plot
+    plt.figure(figsize=(8, 6))
+    plt.scatter(tar, pred, color='blue', label='Pred vs Target')
+    plt.plot(np.unique(tar), np.poly1d(np.polyfit(tar, pred, 1))(np.unique(tar)), color='red', linestyle='--', label='Best Fit Line')
+    plt.title('Predicted vs Target')
+    plt.xlabel('Target')
+    plt.ylabel('Predicted')
+    plt.legend()
+    plt.grid(True)
+    if save_path:
+            plt.savefig(save_path)  # Save the plot image
+    plt.close()
+    
 def plot_dot_chart(X, predict, indexes, labels, save_path=None):
     """
     Plots a dot chart based on two lists of x and y coordinates.
@@ -139,10 +138,10 @@ def plot_dot_chart(X, predict, indexes, labels, save_path=None):
         y_values = X[:,-1]
 
         #target
-        plt.scatter(x_values, y_values, color='#FFA07A', label='Target')
+        plt.scatter(x_values, y_values, color='red', label='Target')
 
         #predict
-        plt.scatter(x_values, predict, color='#AFEEEE', label='Predict')
+        plt.scatter(x_values, predict, color='blue', label='Predict')
         
         plt.title(f'Effect of {labels[i]} feature on {labels[X.shape[1] - 1]}')
         plt.xlabel(f'{labels[i]} values')

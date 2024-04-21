@@ -26,7 +26,6 @@
             .container {
                 background-color: #FFFFFF;
                 width: 100%;
-                height: 605px;
             }
 
             header {
@@ -98,23 +97,13 @@
                 padding: 40px 20px;
             }
 
-            .leftside,
-            h1 {
+            .leftside h1 {
                 max-width: 600px;
                 font-size: 2.5rem;
                 line-height: 49px;
                 text-align: left;
                 color: black;
                 margin-bottom: 10px;
-            }
-
-            .leftside,
-            p {
-                width: 550px;
-                font-size: 1.2rem;
-                line-height: 32px;
-                text-align: left;
-                margin-bottom: 5px;
             }
 
             .leftside-button {
@@ -244,8 +233,6 @@
             .container-about {
                 position: relative;
                 width: 100%;
-                height: 202px;
-                top: 154px;
                 gap: 30px;
                 align-items: center;
                 margin-bottom: 55px;
@@ -266,7 +253,6 @@
                 grid-template-rows: auto auto auto;
                 gap: 39px;
                 position: relative;
-                left: 152px;
             }
 
             .card1,
@@ -354,28 +340,17 @@
             }
 
             .container-pages {
-                width: 100%;
                 display: flex;
                 flex-direction: row;
                 justify-content: center;
                 position: relative;
-                height: 470px;
-                top: 195px;
                 gap: 163px;
                 align-items: center;
-                margin: auto;
             }
 
             .pagescontent {
-                width: 450px;
-                height: 245px;
                 gap: 20px;
-                margin-top: 72px;
-            }
-
-            .pagescontent-h1 {
-                width: 411px;
-                height: 98px;
+                padding-bottom: 40px;
             }
 
             .pagescontent-p1,
@@ -624,32 +599,14 @@
                 display: flex;
             }
 
-
             @media (max-width: 1399px) and (min-width: 1200px) {
-
-                header {
-                    width: 100%;
-                    display: flex;
-                    flex-direction: row;
-                    gap: 47px;
-                }
 
                 .hero {
                     width: 100%;
                     display: flex;
                     flex-direction: row;
-                    gap: 47px;
-                }
-
-
-                .leftside,
-                .rightside {
-                    text-align: center;
-                    margin: auto;
-                }
-
-                .rightside {
-                    width: 60%;
+                    gap: 40px;
+                    justify-content: center
                 }
 
                 .container-about {
@@ -658,12 +615,10 @@
                     flex-direction: column;
                     position: relative;
                     align-items: center;
-                    right: 152px;
                 }
 
                 .about-heading {
                     position: relative;
-                    left: 155px;
                 }
 
                 .cards {
@@ -755,13 +710,11 @@
                 .container-about {
                     width: 992px;
                     position: relative;
-                    right: 145px;
                 }
 
                 .about-heading {
                     text-align: center;
                     position: relative;
-                    left: 215px;
                 }
 
                 .container-blog,
@@ -1412,6 +1365,14 @@
                 }
 
             }
+
+            .leftside p {
+                width: 550px;
+                font-size: 1.2rem;
+                line-height: 32px;
+                text-align: left;
+                margin-bottom: 5px;
+            }
     </style>
 </head>
 
@@ -1420,17 +1381,17 @@
     <!-- Home -->
     <section id="home">
         <div class="container">
-            <header></header>
-            </header>
-
             <div class="hero">
                 <div class="leftside">
-                    <h1>XAI with Struture Learning</h1>
-                    <p>XAI for causal reasoning prediction.</p>
+                    <h1>Causal Equation Model</h1>
+                    <p>Mô hình Causal Equation Model - CEM là một mô hình học sâu minh bạch, 
+                        được xây dựng dựa trên phương pháp học cấu trúc. Khả năng giải thích của mô hình 
+                        được thể hiện qua việc chỉ ra được các mối quan hệ nhân quả giữa các biến đầu vào và kết quả đầu ra 
+                        của mô hình. </p>
                     <button class="leftside-button" style="float: left;" id="demo_button" onclick="section_focus('about')">DEMO</button>
                 </div>
                 <div class="rightside">
-                    <img src="{{url_for('download_file', filename=home_image)}}" class="rightside-img" alt="wallpaper">
+                    <img src="{{url_for('download_file', filename=home_image)}}" class="rightside-img" alt="wallpaper" width="504" height="304">
                 </div>
             </div>
         </div>
@@ -1439,48 +1400,48 @@
     <!-- About -->
     <section id="about">
         <div class="container-about">
-            <div class="about-heading">
-                <h2> Experiments </h2>
-            </div>
+            <!--<div class="about-heading">
+                <h2> Features </h2>
+            </div>-->
             <div class="cards">
-                <div class="card1" style="height: 250px;">
+                <div class="card3" style="height: 250px;">
                     <div class="card-info">
-                        <img src="{{url_for('download_file', filename=cali_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> California Housing </h4>
+                        <img src="{{url_for('download_file', filename=data_icon)}}" alt="save-time-icon" style="width: 40px; height: 40px;">
+                        <h4> Dự Đoán    </h4>
                     </div>
-                    <p> The data pertains to the houses found in a given California district and some summary stats about them based on the 1990 census data. </p>
-                    <button class="button-card-details" style="width: 75px; height: 25px;" onclick="section_focus('cali_ex')" >More...</button>
+                    <p> Ứng dụng minh họa cho phép người dùng sử dụng với dữ liệu LAML Cancer (phân lớp)
+                        và dữ liệu Boston Housing (hồi quy).
+                    </p>
+                    <button class="button-card-details" style="width: 75px; height: 25px;" onclick="section_focus('upload_data')" >More...</button>
                 </div>
-
                 <div class="card2" style="height: 250px;">
                     <div class="card-info">
                         <img src="{{url_for('download_file', filename=laml_icon)}}" alt="private-wifi-icon"
                             style="width: 40px; height: 40px;">
-                        <h4> LAML Gene Expression  </h4>
+                        <h4> LAML Cancer  </h4>
                     </div>
-                    <p> This software is very easy for
-                        you to manage you can use it as you wish.
+                    <p>LAML là dữ liệu gen miêu tả biểu hiện gen 
+                       trong mẫu máu của bệnh nhân mắc bệnh ung thư máu, 
+                       dữ liệu được trích từ dự án <a href="https://pubmed.ncbi.nlm.nih.gov/24071849/" style="display:contents">TCGA </a>.
                     </p>
                     <button class="button-card-details" style="width: 75px; height: 25px;" onclick="section_focus('laml_ex')">More...</button>
                 </div>
-
-                <div class="card3" style="height: 250px;">
+                <div class="card1" style="height: 250px;">
                     <div class="card-info">
-                        <img src="{{url_for('download_file', filename=data_icon)}}" alt="save-time-icon" style="width: 40px; height: 40px;">
-                        <h4> Upload Your Datasets</h4>
+                        <img src="{{url_for('download_file', filename=cali_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Boston Housing </h4>
                     </div>
-                    <p> This software is very easy for
-                        you to manage you can use it as you wish.
-                    </p>
-                    <button class="button-card-details" style="width: 75px; height: 25px;">More...</button>
+                    <p>  Tập dữ liệu <a href="https://www.cs.toronto.edu/~delve/data/boston/bostonDetail.html" style="display:contents">"Boston Housing"</a> 
+                        được lấy từ thông tin do Cơ quan Điều tra Dân số Hoa Kỳ thu thập liên quan đến nhà ở trong khu vực Boston MA. </p>
+                    <button class="button-card-details" style="width: 75px; height: 25px;" onclick="section_focus('boston_ex')" >More...</button>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Blog -->
-    <section id="blog">
+    <!-- <section id="blog">
         <div class="container-blog">
             <div class="blogpic">
                 <img src="{{url_for('download_file', filename=tabular)}}" alt="blog pic" class="blogpic1" 
@@ -1497,121 +1458,42 @@
                 </div>
             </div>
         </div>
-    </section>
-    
-    <section id="cls_ex" style="height: 500px;">
-        <div class="container-about" style="margin-top: 200;">
-            <div class="about-heading">
-                <h2> Boston Housing Dataset </h2>
-            </div>
-            <div class="cards">
-                <div class="card1" style="height: 350px; align-items: center;">
-                    <div class="card-info">
-                        <img src="{{url_for('download_file', filename=graph_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> Causal Graph </h4>
-                    </div>
-                    <img src="{{url_for('download_file', filename=reg_graph)}}" alt="video-messagingicon"
-                            style="width: 320px; height: 250px;">
-                </div>
-                <div class="card1" style="height: 350px; align-items: center;">
-                    <div class="card-info">
-                        <img src="{{url_for('download_file', filename=matrix_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> Trajectory Matrix </h4>
-                    </div>
-                    <img src="{{url_for('download_file', filename=reg_matrix)}}" alt="video-messagingicon"
-                            style="width: 320px; height: 250px;">
-                </div>
-                <div class="card1" style="height: 350px; align-items: center;">
-                    <div class="card-info">
-                        <img src="{{url_for('download_file', filename=predict_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> Prediction Performance </h4>
-                    </div>
-                    <img src="{{url_for('download_file', filename=reg_perform)}}" alt="video-messagingicon"
-                            style="width: 320px; height: 250px;">
-                </div>
-
-                
-            </div>
-        </div>
-    </section>
-
-    <section id="laml_ex" style="height: 500px;">
-        <div class="container-about" style="margin-top: 200;">
-            <div class="about-heading">
-                <h2> LAML Gene Expression Dataset </h2>
-            </div>
-            <div class="cards">
-                <div class="card1" style="height: 350px; align-items: center;">
-                    <div class="card-info">
-                        <img src="{{url_for('download_file', filename=graph_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> Causal Graph </h4>
-                    </div>
-                    <img src="{{url_for('download_file', filename=cls_graph)}}" alt="video-messagingicon"
-                            style="width: 320px; height: 250px;">
-                </div>
-                <div class="card1" style="height: 350px; align-items: center;">
-                    <div class="card-info">
-                        <img src="{{url_for('download_file', filename=matrix_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> Trajectory Matrix </h4>
-                    </div>
-                    <img src="{{url_for('download_file', filename=cls_matrix)}}" alt="video-messagingicon"
-                            style="width: 320px; height: 250px;">
-                </div>
-                <div class="card1" style="height: 350px; align-items: center;">
-                    <div class="card-info">
-                        <img src="{{url_for('download_file', filename=predict_icon)}}" alt="video-messagingicon"
-                            style="width: 40px; height: 40px;">
-                        <h4> Prediction Performance </h4>
-                    </div>
-                    <img src="{{url_for('download_file', filename=cls_perform)}}" alt="video-messagingicon"
-                            style="width: 320px; height: 250px;">
-                </div>
-
-                
-            </div>
-        </div>
-    </section>
-
+    </section> -->
 
     <!-- Pages -->
-    <section id="upload_data" style="height: 700px;">
+    <section id="upload_data">
         <div class="container-pages">
             <div class="pagescontent">
-                <h1 class="pagescontent-h1"> Upload your datasets </h1>
+                <!--<h1 class="pagescontent-h1"> Dự Đoán </h1>-->
                 <div class="pagescontent-p">
-                    <p class="pagescontent-p1"> Make sure your datasets is in appropriate fotmat. {{status_file}} </p>
+                    <!--<p class="pagescontent-p1"> Make sure your datasets is in appropriate fotmat. {{status_file}} </p> -->
 
-                    <p class="pagescontent-p1" style="font-weight: bold;"> Choose the tasks below:  </p>
+                    <p class="pagescontent-p1" style="font-weight: bold;"> Chọn loại dữ liệu muốn dự đoán:  </p>
 
                     <form action="/" method="post" enctype="multipart/form-data">
-                        <p class="pagescontent-p1" style="margin-top: 2px"><input type="radio" id="cls" name="type" value="cls" checked> LAML Classification</p>
-                        <p class="pagescontent-p1" style="margin-top: 2px"><input type="radio" id="reg" name="type" value="reg"> Boston Housing Regression</p>
+                        <p class="pagescontent-p1" style="margin-top: 2px"><input type="radio" id="cls" name="type" value="cls" checked> Phân lớp: LAML Cancer</p>
+                        <p class="pagescontent-p1" style="margin-top: 2px"><input type="radio" id="reg" name="type" value="reg"> Hồi quy: Boston Housing</p>
 
                         <input type="file" name="file" accept=".csv">
-                        <button class="pagescontent-button"> Upload </button>
+                        <button class="pagescontent-button" type="submit"> Upload </button>
 
                     </form>
                 </div>
             </div>
             <div class="pagesimage">
-                <img src="assests/mockup.png" class="pagesimage" alt="mockup">
+                <img src="{{url_for('download_file', filename=graphsicon)}}" class="pagesimage" alt="graph", width=260mm, height=276mm>
             </div>
         </div>
     </section>
 
-    <section id="uploaded_ex" style="height: 500px;">
-        <div class="container-about" style="margin-top: 200;">
+    <section id="uploaded_ex">
+        <div class="container-about">
             <div class="cards">
                 <div class="card1" style="height: 350px; align-items: center;">
                     <div class="card-info">
                         <img src="{{url_for('download_file', filename=graph_icon)}}" alt="video-messagingicon"
                             style="width: 40px; height: 40px;">
-                        <h4> Causal Graph </h4>
+                        <h4> Directed Acyclic Graph </h4>
                     </div>
                     <img src="{{url_for('download_file', filename=upload_graph)}}" alt="video-messagingicon"
                             style="width: 320px; height: 250px;">
@@ -1629,7 +1511,7 @@
                     <div class="card-info">
                         <img src="{{url_for('download_file', filename=predict_icon)}}" alt="video-messagingicon"
                             style="width: 40px; height: 40px;">
-                        <h4> Prediction Performance </h4>
+                        <h4> Predicted Results </h4>
                     </div>
                     <img src="{{url_for('download_file', filename=upload_perform)}}" alt="video-messagingicon"
                             style="width: 320px; height: 250px;">
@@ -1639,7 +1521,7 @@
         </div>
     </section>
 
-    <section id="uploaded_visualization" style="height: 500px;">
+    <section id="uploaded_visualization">
         <div class="container-about" style="margin-top: 200;">
             <div class="cards">
                 <div class="card1" style="height: 350px; align-items: center;">
@@ -1673,7 +1555,84 @@
             </div>
         </div>
     </section>
+    
+    <section id="boston_ex"> 
+        <div class="container-about">
+            <div class="about-heading">
+                <h2> Dữ liệu Boston Housing </h2>
+            </div>
+            <div class="cards">
+                <div class="card1" style="height: 350px; align-items: center;">
+                    <div class="card-info">
+                        <img src="{{url_for('download_file', filename=graph_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Directed Acyclic Graph </h4>
+                    </div>
+                    <img src="{{url_for('download_file', filename=reg_graph)}}" alt="video-messagingicon"
+                            style="width: 320px; height: 250px;">
+                </div>
+                <div class="card1" style="height: 350px; align-items: center;">
+                    <div class="card-info">
+                        <img src="{{url_for('download_file', filename=matrix_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Trajectory Matrix </h4>
+                    </div>
+                    <img src="{{url_for('download_file', filename=reg_matrix)}}" alt="video-messagingicon"
+                            style="width: 320px; height: 250px;">
+                </div>
+                <div class="card1" style="height: 350px; align-items: center;">
+                    <div class="card-info">
+                        <img src="{{url_for('download_file', filename=predict_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Predicted Results </h4>
+                    </div>
+                    <img src="{{url_for('download_file', filename=reg_perform)}}" alt="video-messagingicon"
+                            style="width: 320px; height: 250px;">
+                </div>
 
+                
+            </div>
+        </div>
+    </section>
+
+    <section id="laml_ex">
+        <div class="container-about">
+            <div class="about-heading">
+                <h2> Dữ liệu LAML Cancer </h2>
+            </div>
+            <div class="cards">
+                <div class="card1" style="height: 350px; align-items: center;">
+                    <div class="card-info">
+                        <img src="{{url_for('download_file', filename=graph_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Directed Acyclic Graph </h4>
+                    </div>
+                    <img src="{{url_for('download_file', filename=cls_graph)}}" alt="video-messagingicon"
+                            style="width: 320px; height: 250px;">
+                </div>
+                <div class="card1" style="height: 350px; align-items: center;">
+                    <div class="card-info">
+                        <img src="{{url_for('download_file', filename=matrix_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Trajectory Matrix </h4>
+                    </div>
+                    <img src="{{url_for('download_file', filename=cls_matrix)}}" alt="video-messagingicon"
+                            style="width: 320px; height: 250px;">
+                </div>
+                <div class="card1" style="height: 350px; align-items: center;">
+                    <div class="card-info">
+                        <img src="{{url_for('download_file', filename=predict_icon)}}" alt="video-messagingicon"
+                            style="width: 40px; height: 40px;">
+                        <h4> Predicted Results </h4>
+                    </div>
+                    <img src="{{url_for('download_file', filename=cls_perform)}}" alt="video-messagingicon"
+                            style="width: 320px; height: 250px;">
+                </div>
+
+                
+            </div>
+        </div>
+    </section>
 
 </body>
 
