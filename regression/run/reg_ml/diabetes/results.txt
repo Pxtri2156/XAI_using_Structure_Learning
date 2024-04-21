@@ -1,0 +1,35 @@
+Model: Ridge
+Best Parameters: {'alpha': 1}
+Mean Squared Error on Test Data (Mean): 2865.9548
+Mean Squared Error on Test Data (Standard Deviation): 47.61595
+
+Model: Lasso
+Best Parameters: {'alpha': 0.1}
+Mean Squared Error on Test Data (Mean): 2864.2322
+Mean Squared Error on Test Data (Standard Deviation): 55.684475
+
+Model: ElasticNet
+Best Parameters: {'alpha': 0.1, 'l1_ratio': 0.9}
+Mean Squared Error on Test Data (Mean): 2855.138
+Mean Squared Error on Test Data (Standard Deviation): 34.50077
+
+Model: SVR
+Best Parameters: {'C': 10, 'gamma': 1}
+Mean Squared Error on Test Data (Mean): 2762.988171800652
+Mean Squared Error on Test Data (Standard Deviation): 80.7311932672559
+
+Model: DecisionTreeRegressor
+Best Parameters: {'max_depth': 5}
+Mean Squared Error on Test Data (Mean): 4116.06121834907
+Mean Squared Error on Test Data (Standard Deviation): 535.3491920952787
+
+Model: RandomForestRegressor
+Best Parameters: {'max_depth': 5, 'n_estimators': 50}
+Mean Squared Error on Test Data (Mean): 2944.3886358201985
+Mean Squared Error on Test Data (Standard Deviation): 89.40292881297783
+
+Model: LinearRegression
+Best Parameters: {}
+Mean Squared Error on Test Data (Mean): 2906.9265
+Mean Squared Error on Test Data (Standard Deviation): 56.930492
+

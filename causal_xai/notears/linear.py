@@ -128,9 +128,7 @@ def main(args):
     start = time.time() 
     W_est = notears_linear(X, wandb, lambda1=0.1, loss_type='l2')
     end = time.time()
-    print("The time of execution of above program is :",
-      (end-start) * 10**3, "ms")
-    print('W_est: ', W_est.shape)
+    print("The time of learning graph is :",(end-start) * 10**3, "ms")
     assert utils.is_dag(W_est)
     np.savetxt(out_folder +'W_est.csv', W_est, delimiter=',')
     acc = utils.count_accuracy(B_true, W_est != 0)
@@ -150,6 +148,9 @@ def arg_parser():
                         type=int)
     parser.add_argument("--dimensions", 
                         default=20, 
+                        type=int)
+    parser.add_argument("--edges", 
+                        default=15, 
                         type=int)
     parser.add_argument("--wandb_mode", 
                         default="disabled", 

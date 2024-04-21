@@ -238,6 +238,10 @@ def main(args):
         test_loss = 0.5 / target.shape[0] * np.sum((reg_predict - target) ** 2)
         r2 = r2_score(target, reg_predict)
         
+        # Visualize predict and target 
+        pre_tar_path =  out_folder + "predict_target.png"
+        ut.visualize_predict_target(target, reg_predict, X_test, pre_tar_path)
+        
         ## Visualize graph 
         vis_path = out_folder + "vis_graph.png"
         labels = ut.get_labels(args.data_name)

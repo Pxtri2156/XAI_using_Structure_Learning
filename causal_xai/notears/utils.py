@@ -341,6 +341,10 @@ def get_labels(name):
         labels = {0:'0:CRIM', 1:'1:INDUS', 2:'2:NOX', 3:'3:RM', 4: '4:AGE', 5:'5:DIS', 6:'6:RAD', 
                   7:'7:TAX', 8:'8:PTRATIO', 9:'9:B', 10:'10:LSTAT', 11:'11:MEDV'}
     
+    elif name == "boston_housing_v2":
+        labels = {0:'0:LSTAT', 1:"1:INDUS", 2:":NOX", 3:"3:PTRATIO", 4:"4:RM", 5:"5:TAX", 
+                  6:"6:DIS", 7:"7:AGE", 8:"8:MEDV"}
+    
     elif name == "cali_housing":
         labels = {0:'0:MedInc', 1:'1:HouseAge', 2:'2:AveRooms', 3:'3:AveBedrms', 
                   4:'4:Population', 5:'5:AveOccup', 6:'6:Latitude', 7:'7:Longitude', 8:'8:price'}
@@ -507,3 +511,24 @@ def benchmark_me():
             return result
         return wraps
     return decorator
+
+
+
+def visualize_predict_target(Y, Y_hat, X, save_path):
+
+    num_dimensions = len(X[0])
+    num_plots = num_dimensions  # Chúng ta sẽ có một biểu đồ cho mỗi chiều của X
+
+    fig, axs = plt.subplots(num_plots, figsize=(8, 6 * num_plots))
+
+    for dim in range(num_dimensions):
+        ax = axs[dim]
+        ax.scatter(X[:, dim], Y, color='blue', label='Ground Truth')
+        ax.scatter(X[:, dim], Y_hat, color='red', label='Predicted')
+        ax.set_xlabel(f'X[{dim}]')
+        ax.set_ylabel('Value')
+        ax.set_title(f'Visualization of Y and Y_hat vs X[{dim}]')
+        ax.legend()
+
+    plt.tight_layout()
+    plt.savefig(save_path)

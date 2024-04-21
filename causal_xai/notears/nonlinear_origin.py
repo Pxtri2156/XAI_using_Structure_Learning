@@ -1,14 +1,15 @@
 import  sys
 sys.path.append("./")
+
 from notears.locally_connected import LocallyConnected
 from notears.lbfgsb_scipy import LBFGSBScipy
-from notears.trace_expm import trace_expm, trace_expm_gpu
+from notears.trace_expm import trace_expm
 import torch
 import torch.nn as nn
 import numpy as np
 import math
-import pandas as pd
 import time
+
 
 class NotearsMLP(nn.Module):
     def __init__(self, dims, bias=True):
@@ -27,7 +28,7 @@ class NotearsMLP(nn.Module):
         for l in range(len(dims) - 2):
             layers.append(LocallyConnected(d, dims[l + 1], dims[l + 2], bias=bias))
         self.fc2 = nn.ModuleList(layers)
-        
+
     def _bounds(self):
         d = self.dims[0]
         bounds = []
@@ -39,7 +40,6 @@ class NotearsMLP(nn.Module):
                     else:
                         bound = (0, None)
                     bounds.append(bound)
-        # constraint y=0 (chú ý số chiều)
         return bounds
 
     def forward(self, x):  # [n, d] -> [n, d]
@@ -57,8 +57,7 @@ class NotearsMLP(nn.Module):
         fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j * m1, i]
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
-        # h = trace_expm(A) - d  # (Zheng et al. 2018)
-        h = trace_expm_gpu(A) - d
+        h = trace_expm(A) - d  # (Zheng et al. 2018)
         # A different formulation, slightly faster at the cost of numerical stability
         # M = torch.eye(d) + A / d  # (Yu et al. 2019)
         # E = torch.matrix_power(M, d - 1)
@@ -90,11 +89,83 @@ class NotearsMLP(nn.Module):
         W = W.cpu().detach().numpy()  # [i, j]
         return W
 
+
+class NotearsSobolev(nn.Module):
+    def __init__(self, d, k):
+        """d: num variables k: num expansion of each variable"""
+        super(NotearsSobolev, self).__init__()
+        self.d, self.k = d, k
+        self.fc1_pos = nn.Linear(d * k, d, bias=False)  # ik -> j
+        self.fc1_neg = nn.Linear(d * k, d, bias=False)
+        self.fc1_pos.weight.bounds = self._bounds()
+        self.fc1_neg.weight.bounds = self._bounds()
+        nn.init.zeros_(self.fc1_pos.weight)
+        nn.init.zeros_(self.fc1_neg.weight)
+        self.l2_reg_store = None
+
+    def _bounds(self):
+        # weight shape [j, ik]
+        bounds = []
+        for j in range(self.d):
+            for i in range(self.d):
+                for _ in range(self.k):
+                    if i == j:
+                        bound = (0, 0)
+                    else:
+                        bound = (0, None)
+                    bounds.append(bound)
+        return bounds
+
+    def sobolev_basis(self, x):  # [n, d] -> [n, dk]
+        seq = []
+        for kk in range(self.k):
+            mu = 2.0 / (2 * kk + 1) / math.pi  # sobolev basis
+            psi = mu * torch.sin(x / mu)
+            seq.append(psi)  # [n, d] * k
+        bases = torch.stack(seq, dim=2)  # [n, d, k]
+        bases = bases.view(-1, self.d * self.k)  # [n, dk]
+        return bases
+
+    def forward(self, x):  # [n, d] -> [n, d]
+        bases = self.sobolev_basis(x)  # [n, dk]
+        x = self.fc1_pos(bases) - self.fc1_neg(bases)  # [n, d]
+        self.l2_reg_store = torch.sum(x ** 2) / x.shape[0]
+        return x
+
+    def h_func(self):
+        fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j, ik]
+        fc1_weight = fc1_weight.view(self.d, self.d, self.k)  # [j, i, k]
+        A = torch.sum(fc1_weight * fc1_weight, dim=2).t()  # [i, j]
+        h = trace_expm(A) - d  # (Zheng et al. 2018)
+        # A different formulation, slightly faster at the cost of numerical stability
+        # M = torch.eye(self.d) + A / self.d  # (Yu et al. 2019)
+        # E = torch.matrix_power(M, self.d - 1)
+        # h = (E.t() * M).sum() - self.d
+        return h
+
+    def l2_reg(self):
+        reg = self.l2_reg_store
+        return reg
+
+    def fc1_l1_reg(self):
+        reg = torch.sum(self.fc1_pos.weight + self.fc1_neg.weight)
+        return reg
+
+    @torch.no_grad()
+    def fc1_to_adj(self) -> np.ndarray:
+        fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j, ik]
+        fc1_weight = fc1_weight.view(self.d, self.d, self.k)  # [j, i, k]
+        A = torch.sum(fc1_weight * fc1_weight, dim=2).t()  # [i, j]
+        W = torch.sqrt(A)  # [i, j]
+        W = W.cpu().detach().numpy()  # [i, j]
+        return W
+
+
 def squared_loss(output, target):
-    # Use weight
     n = target.shape[0]
     loss = 0.5 / n * torch.sum((output - target) ** 2)
     return loss
+
 
 def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
     """Perform one step of dual ascent in augmented Lagrangian."""
@@ -123,6 +194,7 @@ def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
     alpha += rho * h_new
     return rho, alpha, h_new
 
+
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
                       lambda1: float = 0.,
@@ -137,11 +209,10 @@ def notears_nonlinear(model: nn.Module,
                                          rho, alpha, h, rho_max)
         if h <= h_tol or rho >= rho_max:
             break
-        
-    print("h: ", h)
     W_est = model.fc1_to_adj()
     W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
+
 
 def main():
     torch.set_default_dtype(torch.double)
@@ -150,20 +221,19 @@ def main():
     import notears.utils as ut
     ut.set_random_seed(123)
 
-    n, d, s0, graph_type, sem_type = 200, 50, 40, 'ER', 'mim'
+    n, d, s0, graph_type, sem_type = 100, 20, 15, 'ER', 'mim'
     B_true = ut.simulate_dag(d, s0, graph_type)
     np.savetxt('W_true.csv', B_true, delimiter=',')
 
     X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
-    
     np.savetxt('X.csv', X, delimiter=',')
-    start_time = time.time()
 
     model = NotearsMLP(dims=[d, 10, 1], bias=True)
+    start_time = time.time()
     W_est = notears_nonlinear(model, X, lambda1=0.01, lambda2=0.01)
     end_time = time.time()
-    print("The time of execution of above program is :",
-      (end_time-start_time) * 10**3, "ms")
+    print("The time of learning graph is :",(end_time-start_time) * 10**3, "ms")
+    
     assert ut.is_dag(W_est)
     np.savetxt('W_est.csv', W_est, delimiter=',')
     acc = ut.count_accuracy(B_true, W_est != 0)

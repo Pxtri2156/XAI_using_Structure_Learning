@@ -25,7 +25,6 @@ def rref_torch(A):
             A[j] -= A[j, i] * A[i]
     return A
 
-
 def non_pivot_columns_indices(matrix):
     zero_diag_columns = []
     for i in range(matrix.shape[0]):

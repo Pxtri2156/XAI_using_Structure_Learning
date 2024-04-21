@@ -1,0 +1,70 @@
+Model: Ridge
+Best Parameters: {'alpha': 0.1}
+Mean Squared Error on Test Data (Mean): 26.382421
+Mean Squared Error on Test Data (Standard Deviation): 0.8640897
+
+Model: Lasso
+Best Parameters: {'alpha': 0.1}
+Mean Squared Error on Test Data (Mean): 27.004587
+Mean Squared Error on Test Data (Standard Deviation): 0.5793626
+
+Model: ElasticNet
+Best Parameters: {'alpha': 0.1, 'l1_ratio': 0.9}
+Mean Squared Error on Test Data (Mean): 26.860159
+Mean Squared Error on Test Data (Standard Deviation): 0.4226836
+
+Model: SVR
+Best Parameters: {'C': 10, 'gamma': 1}
+Mean Squared Error on Test Data (Mean): 13.474068197447759
+Mean Squared Error on Test Data (Standard Deviation): 0.5073047970934573
+
+Model: DecisionTreeRegressor
+Best Parameters: {'max_depth': 10}
+Mean Squared Error on Test Data (Mean): 21.585743729843824
+Mean Squared Error on Test Data (Standard Deviation): 5.527507659679093
+
+Model: RandomForestRegressor
+Best Parameters: {'max_depth': 10, 'n_estimators': 100}
+Mean Squared Error on Test Data (Mean): 10.455068237733274
+Mean Squared Error on Test Data (Standard Deviation): 2.094331872198366
+
+Model: LinearRegression
+Best Parameters: {}
+Mean Squared Error on Test Data (Mean): 26.62677
+Mean Squared Error on Test Data (Standard Deviation): 0.9241379
+
+Model: Ridge
+Best Parameters: {'alpha': 0.1}
+Mean Squared Error on Test Data (Mean): 0.54821765
+Mean Squared Error on Test Data (Standard Deviation): 0.0015152377
+
+Model: Lasso
+Best Parameters: {'alpha': 0.1}
+Mean Squared Error on Test Data (Mean): 1.258227
+Mean Squared Error on Test Data (Standard Deviation): 0.011511728
+
+Model: ElasticNet
+Best Parameters: {'alpha': 0.1, 'l1_ratio': 0.1}
+Mean Squared Error on Test Data (Mean): 1.1224259
+Mean Squared Error on Test Data (Standard Deviation): 0.001586718
+
+Model: SVR
+Best Parameters: {'C': 10, 'gamma': 10}
+Mean Squared Error on Test Data (Mean): 0.39171772916053577
+Mean Squared Error on Test Data (Standard Deviation): 0.001476099426362968
+
+Model: DecisionTreeRegressor
+Best Parameters: {'max_depth': 10}
+Mean Squared Error on Test Data (Mean): 0.4284420407675146
+Mean Squared Error on Test Data (Standard Deviation): 0.014072793415790487
+
+Model: RandomForestRegressor
+Best Parameters: {'max_depth': None, 'n_estimators': 200}
+Mean Squared Error on Test Data (Mean): 0.2618817931968217
+Mean Squared Error on Test Data (Standard Deviation): 0.0036304124743326027
+
+Model: LinearRegression
+Best Parameters: {}
+Mean Squared Error on Test Data (Mean): 0.55826646
+Mean Squared Error on Test Data (Standard Deviation): 0.008606306
+

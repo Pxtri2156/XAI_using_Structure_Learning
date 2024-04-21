@@ -1,0 +1,23 @@
+Naive Bayes:
+Average Accuracy: 0.5597457627118645
+Accuracy Standard Deviation: 0.017872115855053508
+Average F1-Score: 0.6289134565527291
+F1-Score Standard Deviation: 0.021558808833498068
+
+Decision Tree:
+Average Accuracy: 0.5347457627118645
+Accuracy Standard Deviation: 0.0332458393998865
+Average F1-Score: 0.5907655582556194
+F1-Score Standard Deviation: 0.0727402958692583
+
+SVM:
+Average Accuracy: 0.5805084745762712
+Accuracy Standard Deviation: 0.026597211570296993
+Average F1-Score: 0.649871489819156
+F1-Score Standard Deviation: 0.036346612299878386
+
+Random Forest:
+Average Accuracy: 0.5512711864406781
+Accuracy Standard Deviation: 0.02916965894829783
+Average F1-Score: 0.6145206261391232
+F1-Score Standard Deviation: 0.042834361430320156

@@ -28,43 +28,50 @@ def loadData(data_path):
     return X, y
 
 def model_list_by_dataset(dataset_name): 
-    if dataset_name == 'boston_housing': 
-        model_list = [LinearRegression(fit_intercept=False),
-                Ridge(alpha=1, positive=True), 
-                Lasso(alpha=1, positive=True),
-                ElasticNet(alpha=1, l1_ratio=0.0),
-                svm.SVR(C=3, epsilon=0.0, gamma='auto'), 
-                DecisionTreeRegressor(max_leaf_nodes=50, min_samples_leaf=2, min_samples_split=5, random_state=42, splitter='random'), 
-                RandomForestRegressor(n_estimators=10)]
+    model_list = []
+    if dataset_name == 'boston_housing_v2': 
+        # model_list = [LinearRegression(fit_intercept=False),
+        #         Ridge(alpha=1, positive=True), 
+        #         Lasso(alpha=1, positive=True),
+        #         ElasticNet(alpha=1, l1_ratio=0.0),
+        #         svm.SVR(C=3, epsilon=0.0, gamma='auto'), 
+        #         DecisionTreeRegressor(max_leaf_nodes=50, min_samples_leaf=2, min_samples_split=5, random_state=42, splitter='random'), 
+        #         RandomForestRegressor(n_estimators=10)]
+        model_list = [svm.SVR(C=10, gamma=1)]
     elif dataset_name == 'cali_housing': 
-        model_list = [LinearRegression(fit_intercept=False),
-                Ridge(alpha=1, positive=True, fit_intercept=False), 
-                Lasso(alpha=1, positive=True),
-                ElasticNet(alpha=1, l1_ratio=0.0),
-                svm.SVR(C=2), 
-                DecisionTreeRegressor(max_leaf_nodes=50, min_samples_leaf=4,min_samples_split=5), 
-                RandomForestRegressor()]
+        # model_list = [LinearRegression(fit_intercept=False),
+        #         Ridge(alpha=1, positive=True, fit_intercept=False), 
+        #         Lasso(alpha=1, positive=True),
+        #         ElasticNet(alpha=1, l1_ratio=0.0),
+        #         svm.SVR(C=2), 
+        #         DecisionTreeRegressor(max_leaf_nodes=50, min_samples_leaf=4,min_samples_split=5), 
+        #         RandomForestRegressor()]
+        model_list = [svm.SVR(C=10, gamma=1)]
+
     elif dataset_name == 'diabetes': 
-        model_list = [LinearRegression(),
-                Ridge(alpha=1, positive=True), 
-                Lasso(alpha=1, positive=True),
-                ElasticNet(alpha=1, l1_ratio=0.9),
-                svm.SVR(C=9, epsilon=0.6000000000000001, kernel='sigmoid'), 
-                DecisionTreeRegressor(ccp_alpha=0.2, max_depth=20, max_leaf_nodes=50,
-                      min_impurity_decrease=0.1, min_samples_leaf=2,
-                      min_samples_split=10, min_weight_fraction_leaf=0.1,
-                      splitter='random'), 
-                RandomForestRegressor()]
+        # model_list = [LinearRegression(),
+        #         Ridge(alpha=1, positive=True), 
+        #         Lasso(alpha=1, positive=True),
+        #         ElasticNet(alpha=1, l1_ratio=0.9),
+        #         svm.SVR(C=9, epsilon=0.6000000000000001, kernel='sigmoid'), 
+        #         DecisionTreeRegressor(ccp_alpha=0.2, max_depth=20, max_leaf_nodes=50,
+        #               min_impurity_decrease=0.1, min_samples_leaf=2,
+        #               min_samples_split=10, min_weight_fraction_leaf=0.1,
+        #               splitter='random'), 
+        #         RandomForestRegressor()]
+        model_list = [svm.SVR(C=10, gamma=1)]
+
     elif dataset_name == 'fried_man1': 
-        model_list = [LinearRegression(positive=True),
-                Ridge(alpha=1, positive=True), 
-                Lasso(alpha=1, positive=True, fit_intercept=False),
-                ElasticNet(alpha=1, fit_intercept=False, l1_ratio=0.9, positive=True),
-                svm.SVR(C=10, epsilon=0.0), 
-                DecisionTreeRegressor(ccp_alpha=0.1, max_depth=30, max_leaf_nodes=50,
-                      min_samples_leaf=4, min_samples_split=5,
-                      splitter='random'), 
-                RandomForestRegressor()]
+        # model_list = [LinearRegression(positive=True),
+        #         Ridge(alpha=1, positive=True), 
+        #         Lasso(alpha=1, positive=True, fit_intercept=False),
+        #         ElasticNet(alpha=1, fit_intercept=False, l1_ratio=0.9, positive=True),
+        #         svm.SVR(C=10, epsilon=0.0), 
+        #         DecisionTreeRegressor(ccp_alpha=0.1, max_depth=30, max_leaf_nodes=50,
+        #               min_samples_leaf=4, min_samples_split=5,
+        #               splitter='random'), 
+        #         RandomForestRegressor()]
+        model_list = [svm.SVR(C=10, gamma=1)]
     else: 
         print('Model list problem!')
         

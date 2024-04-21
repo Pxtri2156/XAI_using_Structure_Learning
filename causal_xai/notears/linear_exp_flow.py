@@ -9,11 +9,26 @@ import scipy.linalg as slin
 import scipy.optimize as sopt
 from scipy.special import expit as sigmoid
 from notears import utils
+from notears.rank_factorization import rank_factorization
+
 import time
 import sympy as sp
 
 eps = 1e-8
 
+def benchmark_me():
+    def decorator(function):
+        def wraps(*args, **kwargs):
+            start = time.time()
+            result = function(*args, **kwargs)
+            end = time.time()
+            print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
+            wandb.log({function.__name__:(end - start) *10**3})
+            return result
+        return wraps
+    return decorator
+
+@benchmark_me()
 def non_pivot_columns_indices(matrix):
     zero_diag_columns = []
     for i in range(matrix.shape[0]):
@@ -21,6 +36,7 @@ def non_pivot_columns_indices(matrix):
             zero_diag_columns.append(i)
     return zero_diag_columns
 
+@benchmark_me()
 def matrix_factorization_binh(W):
     #-----------------------------------------------
     # FIND REDUCED ROW ECHELON FORM
@@ -28,7 +44,10 @@ def matrix_factorization_binh(W):
     sympy_matrix = sp.Matrix(W)
 
     # Compute the reduced row echelon form
+    start = time.time()
     rref_matrix = sympy_matrix.rref()[0]
+    end = time.time()
+    print(f"\t\t sympy_matrix exec time: {(end - start) *10**3}")
 
     # Convert the resulting sympy matrix back to numpy array
     B = np.array(rref_matrix).astype(np.float64)
@@ -53,26 +72,15 @@ def matrix_factorization_binh(W):
 
     non_zero_rows = np.any(B != 0, axis=1)
     F = B[non_zero_rows]
-    if W.all() == (C @ F).all():
-        print("Successfully factorized!")
-    else:
-        print("Error!")
+    # if W.all() == (C @ F).all():
+    #     print("Successfully factorized!")
+    # else:
+    #     print("Error!")
     C = torch.tensor(C)
     F = torch.tensor(F)
     return C, F
 
-def benchmark_me():
-    def decorator(function):
-        def wraps(*args, **kwargs):
-            start = time.time()
-            result = function(*args, **kwargs)
-            end = time.time()
-            print(f"\t\t{function.__name__}: exec time: {(end - start) *10**3}")
-            wandb.log({function.__name__:(end - start) *10**3})
-            return result
-        return wraps
-    return decorator
-
+@benchmark_me()
 def series(x):
     """
     compute the matrix series: \sum_{k=0}^{\infty}\frac{x^{k}}{(k+1)!}
@@ -86,6 +94,7 @@ def series(x):
         k = k + 1
     return s
 
+@benchmark_me()
 def cal_expm(A, B, I):
     """
     Compute the expm based on A, B
@@ -95,7 +104,8 @@ def cal_expm(A, B, I):
     expm_W = I + (A.matmul(series_V)).matmul(B)
     expm_W = expm_W.numpy()
     return expm_W
-    
+
+@benchmark_me()    
 def matrix_factorization(W, t):
     # Perform SVD on matrix W
     W = torch.from_numpy(W)
@@ -153,10 +163,13 @@ def notears_linear(X,wandb, t, lambda1, loss_type, max_iter=100, h_tol=1e-8, rho
         # A, B = matrix_factorization(W * W, t)
         try:
             A, B = matrix_factorization_binh(W * W)
+            E = cal_expm(A, B, I)
+            # A, B = rank_factorization(W*W)
         except:
             A, B = matrix_factorization(W * W, t)
+            E = cal_expm(A, B, I)
+
         # A, B = matrix_factorization(W * W, t)
-        E = cal_expm(A, B, I)
         ## Non-negative Matrix Factorization 
         
         # E = slin.expm(W * W)  # (Zheng et al. 2018)

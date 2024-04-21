@@ -9,6 +9,8 @@ import numpy as np
 import math
 import pandas as pd
 import time
+import argparse
+import wandb
 
 class NotearsMLP(nn.Module):
     def __init__(self, dims, bias=True):
@@ -207,38 +209,73 @@ def notears_nonlinear(model: nn.Module,
         if h <= h_tol or rho >= rho_max:
             break
         
-    print("h: ", h)
     W_est = model.fc1_to_adj()
     W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
 
-def main():
+def main(args):
+    out_path=f"{args.root_path}{args.cfg}/nonlinear/"
     torch.set_default_dtype(torch.double)
     np.set_printoptions(precision=3)
 
     import notears.utils as ut
-    ut.set_random_seed(123)
+    # ut.set_random_seed(123)
 
-    n, d, s0, graph_type, sem_type = 200, 50, 40, 'ER', 'mim'
-    B_true = ut.simulate_dag(d, s0, graph_type)
-    np.savetxt('W_true.csv', B_true, delimiter=',')
-
-    X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
+    n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.edges, 'ER', 'mim'
+    wandb.init(
+        project="nonlinear_gpu",
+        name=f"nonlinear_gpu{args.cfg}",
+        config={
+        "samples": n,
+        "dimension": d,
+        "edges:": args.edges},
+        dir=out_path,
+        mode=args.wandb_mode)
     
+    # Synthetic dataset
+    B_true = ut.simulate_dag(d, s0, graph_type)
+    np.savetxt(out_path + 'W_true.csv', B_true, delimiter=',')
+    X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
     print("type X: ", type(X))
-    np.savetxt('X.csv', X, delimiter=',')
+    np.savetxt(out_path + 'X.csv', X, delimiter=',')
+    
+    # Learning DAG
     start_time = time.time()
-
     model = NotearsMLP(dims=[d, 10, 1], bias=True)
     W_est = notears_nonlinear(model, X, lambda1=0.01, lambda2=0.01)
     end_time = time.time()
-    print("The time of execution of above program is :",
-      (end_time-start_time) * 10**3, "ms")
+    print("The time of learning graph is :",(end_time-start_time) * 10**3, "ms")
+
+    # Evaluate
     assert ut.is_dag(W_est)
-    np.savetxt('W_est.csv', W_est, delimiter=',')
+    np.savetxt(out_path + 'W_est.csv', W_est, delimiter=',')
     acc = ut.count_accuracy(B_true, W_est != 0)
     print(acc)
 
+def arg_parser():
+    parser = argparse.ArgumentParser()
+    # path
+    parser.add_argument("--root_path", 
+                        default="/workspace/tripx/MCS/xai_causality/run/run_v10/", 
+                        type=str)
+    parser.add_argument("--cfg", 
+                        default='cfg100_20_15', 
+                        type=str)
+    parser.add_argument("--samples", 
+                        default=100, 
+                        type=int)
+    parser.add_argument("--dimensions", 
+                        default=20, 
+                        type=int)
+    parser.add_argument("--edges", 
+                        default=15, 
+                        type=int)
+    parser.add_argument("--wandb_mode", 
+                        default="disabled", 
+                        type=str)
+    
+    return parser.parse_args()
 
 if __name__ == '__main__':
-    main()
+    args = arg_parser()
+    main(args)

@@ -1,0 +1,4 @@
+		_adj: exec time: 0.011444091796875
+		_loss: exec time: 0.11420249938964844
+		non_pivot_columns_indices: exec time: 0.0064373016357421875
+		matrix_factorization_binh: exec time: 27.268648147583008

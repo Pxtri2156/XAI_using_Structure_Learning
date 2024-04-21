@@ -1,20 +1,16 @@
 import  sys
 sys.path.append("./")
 from notears.locally_connected import LocallyConnected
-# from notears.lbfgsb_scipy import LBFGSBScipy
-# from notears.lbfgsb_gpu import LBFGSBGPU
-import argparse
-import wandb
-
-from notears.trace_expm import trace_expm, trace_expm_gpu, trace_expm_gpu_v0
+from notears.lbfgsb_scipy import LBFGSBScipy
+from notears.trace_expm import trace_expm, trace_expm_gpu
 import torch
 import torch.nn as nn
 import numpy as np
 import math
 import pandas as pd
 import time
-from notears.pytorch_minimize.optim import MinimizeWrapper
-# from pytorch_minimize.optim import MinimizeWrapper
+import wandb
+import argparse
 
 class NotearsMLP(nn.Module):
     def __init__(self, dims, bias=True):
@@ -47,7 +43,7 @@ class NotearsMLP(nn.Module):
                     bounds.append(bound)
         # constraint y=0 (chú ý số chiều)
         return bounds
- 
+
     def forward(self, x):  # [n, d] -> [n, d]
         x = self.fc1_pos(x) - self.fc1_neg(x)  # [n, d * m1]
         x = x.view(-1, self.dims[0], self.dims[1])  # [n, d, m1]
@@ -63,9 +59,13 @@ class NotearsMLP(nn.Module):
         fc1_weight = self.fc1_pos.weight - self.fc1_neg.weight  # [j * m1, i]
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
-        h_origin = trace_expm_gpu_v0(A) - d  
-        h = trace_expm_gpu(A) - d  
-        return h, h_origin
+        # h = trace_expm(A) - d  # (Zheng et al. 2018)
+        h = trace_expm_gpu(A) - d
+        # A different formulation, slightly faster at the cost of numerical stability
+        # M = torch.eye(d) + A / d  # (Yu et al. 2019)
+        # E = torch.matrix_power(M, d - 1)
+        # h = (E.t() * M).sum() - d
+        return h
 
     def l2_reg(self):
         """Take 2-norm-squared of all parameters"""
@@ -89,65 +89,35 @@ class NotearsMLP(nn.Module):
         fc1_weight = fc1_weight.view(d, -1, d)  # [j, m1, i]
         A = torch.sum(fc1_weight * fc1_weight, dim=1).t()  # [i, j]
         W = torch.sqrt(A)  # [i, j]
-        W = W  # [i, j]
+        W = W.cpu().detach().numpy()  # [i, j]
         return W
-    
-def gather_flat_bounds(model):
-    bounds = []
-    for p in model.parameters():
-        if hasattr(p, 'bounds'):
-            b = p.bounds
-        else:
-            b = [(None, None)] * p.numel()
-        bounds += b
-    
-    return bounds
 
 def squared_loss(output, target):
     # Use weight
-    # Loss = causal(X:1->d) + Lambda*classification (y = f_c(X))
-    # Lambda > 1: focus classification
     n = target.shape[0]
     loss = 0.5 / n * torch.sum((output - target) ** 2)
     return loss
 
-def dual_ascent_step(model, X, wandb, device, lambda1, lambda2, rho, alpha, h, rho_max):
+def dual_ascent_step(model, X, lambda1, lambda2, rho, alpha, h, rho_max):
     """Perform one step of dual ascent in augmented Lagrangian."""
     h_new = None
-    model.to(device)
-    flat_bounds = gather_flat_bounds(model)
-    minimizer_args = dict(method='L-BFGS-B', jac=True, bounds=flat_bounds, options={'disp':False, 'maxiter':100})
-    optimizer = MinimizeWrapper(model.parameters(), minimizer_args)
-    
-    # optimizer = LBFGSBGPU(model.parameters())
-    # optimizer = torch.optim.LBFGS(model.parameters())
+    optimizer = LBFGSBScipy(model.parameters())
     X_torch = torch.from_numpy(X)
-    X_torch = X_torch.to(device)
     while rho < rho_max:
         def closure():
             optimizer.zero_grad()
             X_hat = model(X_torch)
             loss = squared_loss(X_hat, X_torch)
-            h_val, ori_h_val = model.h_func()
+            h_val = model.h_func()
             penalty = 0.5 * rho * h_val * h_val + alpha * h_val
             l2_reg = 0.5 * lambda2 * model.l2_reg()
             l1_reg = lambda1 * model.fc1_l1_reg()
             primal_obj = loss + penalty + l2_reg + l1_reg
-            result_dict = {'obj_func': primal_obj, 
-                            'sq_loss': loss, 
-                            'penalty': penalty,
-                            'h_func': h_val.item(), 
-                            'diff_h': h_val.item() - ori_h_val.item(),
-                            'l2_reg': l2_reg,
-                            'l1_reg': l1_reg}
-            wandb.log(result_dict)
             primal_obj.backward()
             return primal_obj
         optimizer.step(closure)  # NOTE: updates model in-place
-        with torch.no_grad():          
-            # h_new = model.h_func().item()
-            h_new, _ = model.h_func()
-            h_new = h_new.item()
+        with torch.no_grad():
+            h_new = model.h_func().item()
         if h_new > 0.25 * h:
             rho *= 10
         else:
@@ -157,8 +127,6 @@ def dual_ascent_step(model, X, wandb, device, lambda1, lambda2, rho, alpha, h, r
 
 def notears_nonlinear(model: nn.Module,
                       X: np.ndarray,
-                      wandb,
-                      device,
                       lambda1: float = 0.,
                       lambda2: float = 0.,
                       max_iter: int = 100,
@@ -167,56 +135,54 @@ def notears_nonlinear(model: nn.Module,
                       w_threshold: float = 0.3):
     rho, alpha, h = 1.0, 0.0, np.inf
     for _ in range(max_iter):
-        rho, alpha, h = dual_ascent_step(model, X, wandb, device, lambda1, lambda2,
+        rho, alpha, h = dual_ascent_step(model, X, lambda1, lambda2,
                                          rho, alpha, h, rho_max)
         if h <= h_tol or rho >= rho_max:
             break
+        
+    print("h: ", h)
     W_est = model.fc1_to_adj()
-    W_est = torch.where(torch.abs(W_est) < w_threshold, torch.tensor(0.0), W_est)
+    W_est[np.abs(W_est) < w_threshold] = 0
     return W_est
 
 def main(args):
-
-    out_path=f"{args.root_path}{args.cfg}/nonlinear_gpu_factor/"
+    
+    out_path=f"{args.root_path}{args.cfg}/nonlinear_factor/"
     torch.set_default_dtype(torch.double)
     np.set_printoptions(precision=3)
 
     import notears.utils as ut
-    ut.set_random_seed(123)
-    device = torch.device("cuda")
+    # ut.set_random_seed(123)
 
     n, d, s0, graph_type, sem_type = args.samples , args.dimensions, args.edges, 'ER', 'mim'
-    lambda1, lambda2 = args.lambda1, args.lambda2
     wandb.init(
-        project="nonlinear_gpu_factorization",
-        name=f"{args.cfg}",
+        project="nonlinear_factor",
+        name=f"nonlinear_factor{args.cfg}",
         config={
         "samples": n,
         "dimension": d,
-        "edges:": args.edges, 
-        'lambda1: ': lambda1,
-        'lambda2: ': lambda2},
+        "edges:": args.edges},
         dir=out_path,
-        mode=args.wandb_mode)
-    
+        mode=args.wandb_mode)  
+     
     # Synthetic dataset
     B_true = ut.simulate_dag(d, s0, graph_type)
+    np.savetxt(out_path + 'W_true.csv', B_true, delimiter=',')
     X = ut.simulate_nonlinear_sem(B_true, n, sem_type)
     print(f"Shape of X: ", X.shape)
     np.savetxt(out_path + 'X.csv', X, delimiter=',')
-
+    
     # Learning DAG
-    model = NotearsMLP(dims=[d, 32, 1], bias=True)
-    start = time.time() 
-    W_est = notears_nonlinear(model, X, wandb, device, lambda1, lambda2)
-    end = time.time()
-    print("The time of learning graph is :",(end-start) * 10**3, "ms")
+    start_time = time.time()
+    model = NotearsMLP(dims=[d, 10, 1], bias=True)
+    W_est = notears_nonlinear(model, X, lambda1=0.1, lambda2=0.01)
+    end_time = time.time()
+    print("The time of learning graph is :",(end_time-start_time) * 10**3, "ms")
     
     # Evaluate
     assert ut.is_dag(W_est)
-    W_est_numpy = W_est.cpu().numpy()
-    np.savetxt(out_path + 'W_est.csv', W_est_numpy, delimiter=',')
-    acc = ut.count_accuracy(B_true, W_est_numpy != 0)
+    np.savetxt(out_path + 'W_est.csv', W_est, delimiter=',')
+    acc = ut.count_accuracy(B_true, W_est != 0)
     print(acc)
 
 def arg_parser():
@@ -237,12 +203,6 @@ def arg_parser():
     parser.add_argument("--edges", 
                         default=15, 
                         type=int)
-    parser.add_argument("--lambda1", 
-                        default=0.01, 
-                        type=float)
-    parser.add_argument("--lambda2", 
-                        default=0.01, 
-                        type=float)
     parser.add_argument("--wandb_mode", 
                         default="disabled", 
                         type=str)
